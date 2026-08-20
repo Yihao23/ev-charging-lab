@@ -1,0 +1,5 @@
+# Standard library only — deliberately.  刻意只用标准库。
+# A diagnostic tool you can drop onto a charging station's embedded Linux
+# without a package manager is worth more than one that needs pip.
+# 一个能直接丢到充电桩嵌入式 Linux 上、不需要包管理器的诊断工具，
+# 比一个必须 pip install 的工具有用得多。

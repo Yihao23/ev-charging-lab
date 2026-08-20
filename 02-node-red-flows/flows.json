@@ -1,0 +1,358 @@
+[
+    {
+        "id": "flow-ocpp-mock-csms",
+        "type": "tab",
+        "label": "OCPP mock CSMS",
+        "disabled": false,
+        "info": "Mock OCPP 1.6-J CSMS built from core nodes only.\n只用核心节点搭建的 OCPP 1.6-J 模拟后台。\n\nConnect a station to ws://localhost:1880/ocpp/CP_1\n把充电桩接到 ws://localhost:1880/ocpp/CP_1"
+    },
+    {
+        "id": "ws-listener-ocpp",
+        "type": "websocket-listener",
+        "path": "/ocpp/CP_1",
+        "wholemsg": "false"
+    },
+    {
+        "id": "cmt-1",
+        "type": "comment",
+        "z": "flow-ocpp-mock-csms",
+        "name": "1 · Station -> CSMS  |  桩 -> 后台",
+        "info": "",
+        "x": 160,
+        "y": 60,
+        "wires": []
+    },
+    {
+        "id": "ws-in",
+        "type": "websocket in",
+        "z": "flow-ocpp-mock-csms",
+        "name": "OCPP in",
+        "server": "ws-listener-ocpp",
+        "client": "",
+        "x": 120,
+        "y": 120,
+        "wires": [
+            [
+                "fn-decode"
+            ]
+        ]
+    },
+    {
+        "id": "fn-decode",
+        "type": "function",
+        "z": "flow-ocpp-mock-csms",
+        "name": "decode OCPP-J frame",
+        "func": "// Decode one OCPP-J frame.  解码一帧 OCPP-J。\n// Frame types / 帧类型:  [2,uid,action,payload] CALL\n//                        [3,uid,payload]        CALLRESULT\n//                        [4,uid,code,desc,{}]   CALLERROR\nlet frame;\ntry {\n    frame = JSON.parse(msg.payload);\n} catch (e) {\n    node.error(\"not a JSON frame: \" + msg.payload, msg);\n    return null;\n}\nif (!Array.isArray(frame) || frame.length < 2) {\n    node.error(\"not an OCPP-J frame\", msg);\n    return null;\n}\n\nconst type = frame[0];\nmsg.ocpp = { type: type, uid: frame[1], action: \"\", payload: {} };\n\nif (type === 2) {\n    msg.ocpp.action = frame[2];\n    msg.ocpp.payload = frame[3] || {};\n} else if (type === 3) {\n    msg.ocpp.payload = frame[2] || {};\n    // Correlate with the request we sent, so we can label the reply.\n    // 与我们发出的请求关联，这样才能给响应打上标签。\n    const pending = flow.get(\"pending\") || {};\n    msg.ocpp.action = pending[msg.ocpp.uid] || \"\";\n    delete pending[msg.ocpp.uid];\n    flow.set(\"pending\", pending);\n} else if (type === 4) {\n    msg.ocpp.errorCode = frame[2];\n    msg.ocpp.errorDescription = frame[3];\n}\n\nnode.status({ fill: \"green\", shape: \"dot\", text: (msg.ocpp.action || \"type \" + type) });\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 320,
+        "y": 120,
+        "wires": [
+            [
+                "fn-respond",
+                "fn-telemetry"
+            ]
+        ]
+    },
+    {
+        "id": "fn-respond",
+        "type": "function",
+        "z": "flow-ocpp-mock-csms",
+        "name": "build CALLRESULT",
+        "func": "// Answer a CALL from the charge point.  回应充电桩发来的 CALL。\n// Only type 2 needs a reply.  只有 type 2 需要回复。\nif (msg.ocpp.type !== 2) { return null; }\n\nconst now = new Date().toISOString();\nconst action = msg.ocpp.action;\nconst p = msg.ocpp.payload;\nconst whitelist = flow.get(\"whitelist\") || [\"DEADBEEF\", \"CAFEBABE\"];\nlet result;\n\nswitch (action) {\n    case \"BootNotification\":\n        // interval is the heartbeat period we impose on the station.\n        // interval 是我们强加给桩的心跳周期。\n        result = { currentTime: now, interval: 30, status: \"Accepted\" };\n        break;\n\n    case \"Heartbeat\":\n        result = { currentTime: now };\n        break;\n\n    case \"StatusNotification\":\n        flow.set(\"connectorStatus\", p.status);\n        result = {};\n        break;\n\n    case \"Authorize\": {\n        const ok = whitelist.indexOf(p.idTag) !== -1;\n        result = { idTagInfo: { status: ok ? \"Accepted\" : \"Invalid\" } };\n        break;\n    }\n\n    case \"StartTransaction\": {\n        const txId = (flow.get(\"nextTxId\") || 0) + 1;\n        flow.set(\"nextTxId\", txId);\n        flow.set(\"activeTx\", txId);\n        result = { transactionId: txId, idTagInfo: { status: \"Accepted\" } };\n        break;\n    }\n\n    case \"StopTransaction\":\n        flow.set(\"activeTx\", null);\n        result = {};\n        break;\n\n    case \"MeterValues\":\n    case \"DiagnosticsStatusNotification\":\n    case \"FirmwareStatusNotification\":\n        result = {};\n        break;\n\n    default:\n        // Never stay silent. An unanswered CALL trips the station's 30 s\n        // message timeout and drops the whole session.\n        // 绝不能沉默。没有响应的 CALL 会触发桩侧 30 秒超时并断开整个会话。\n        msg.payload = JSON.stringify([4, msg.ocpp.uid, \"NotImplemented\",\n                                      \"no handler in this flow\", {}]);\n        node.warn(\"unhandled action: \" + action);\n        return msg;\n}\n\nmsg.payload = JSON.stringify([3, msg.ocpp.uid, result]);\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 570,
+        "y": 100,
+        "wires": [
+            [
+                "ws-out"
+            ]
+        ]
+    },
+    {
+        "id": "ws-out",
+        "type": "websocket out",
+        "z": "flow-ocpp-mock-csms",
+        "name": "OCPP out",
+        "server": "ws-listener-ocpp",
+        "client": "",
+        "x": 790,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "fn-telemetry",
+        "type": "function",
+        "z": "flow-ocpp-mock-csms",
+        "name": "extract telemetry",
+        "func": "// Flatten every frame into one telemetry record.\n// 把每一帧压平成一条遥测记录。\n// This is the shape the dashboard and the JSONL log both consume.\n// 仪表盘和 JSONL 日志消费的都是这个结构。\nconst o = msg.ocpp;\nconst rec = {\n    ts: new Date().toISOString(),\n    type: o.type,\n    uid: o.uid,\n    action: o.action || \"\",\n    status: flow.get(\"connectorStatus\") || \"Unknown\",\n    tx: flow.get(\"activeTx\") || null,\n    power_w: null,\n    current_a: null,\n    energy_wh: null\n};\n\nif (o.action === \"MeterValues\") {\n    const samples = ((o.payload.meterValue || [])[0] || {}).sampledValue || [];\n    samples.forEach(function (s) {\n        const v = parseFloat(s.value);\n        if (s.measurand === \"Power.Active.Import\") { rec.power_w = v; }\n        else if (s.measurand === \"Current.Import\") { rec.current_a = v; }\n        else if (!s.measurand || s.measurand === \"Energy.Active.Import.Register\") { rec.energy_wh = v; }\n    });\n}\n\nif (o.type === 4) { rec.error = o.errorCode + \": \" + o.errorDescription; }\n\nmsg.payload = rec;\nmsg.topic = rec.action;\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 570,
+        "y": 180,
+        "wires": [
+            [
+                "dbg-telemetry",
+                "file-jsonl",
+                "lnk-out-telemetry"
+            ]
+        ]
+    },
+    {
+        "id": "dbg-telemetry",
+        "type": "debug",
+        "z": "flow-ocpp-mock-csms",
+        "name": "telemetry",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload.action",
+        "statusType": "auto",
+        "x": 800,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "file-jsonl",
+        "type": "file",
+        "z": "flow-ocpp-mock-csms",
+        "name": "session.jsonl",
+        "filename": "/tmp/ocpp-session.jsonl",
+        "filenameType": "str",
+        "appendNewline": true,
+        "createDir": true,
+        "overwriteFile": "false",
+        "encoding": "none",
+        "x": 800,
+        "y": 210,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "lnk-out-telemetry",
+        "type": "link out",
+        "z": "flow-ocpp-mock-csms",
+        "name": "telemetry ->",
+        "mode": "link",
+        "links": [],
+        "x": 795,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "cmt-2",
+        "type": "comment",
+        "z": "flow-ocpp-mock-csms",
+        "name": "2 · CSMS -> Station  |  后台 -> 桩  (click the inject buttons)",
+        "info": "",
+        "x": 250,
+        "y": 340,
+        "wires": []
+    },
+    {
+        "id": "inj-remote-start",
+        "type": "inject",
+        "z": "flow-ocpp-mock-csms",
+        "name": "▶ RemoteStartTransaction",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 190,
+        "y": 400,
+        "wires": [
+            [
+                "fn-remote-start"
+            ]
+        ]
+    },
+    {
+        "id": "fn-remote-start",
+        "type": "function",
+        "z": "flow-ocpp-mock-csms",
+        "name": "RemoteStart",
+        "func": "// CSMS -> station: start a transaction remotely.\n// 后台 -> 桩: 远程开启事务。\nconst uid = \"op-\" + ((flow.get(\"opSeq\") || 0) + 1);\nflow.set(\"opSeq\", (flow.get(\"opSeq\") || 0) + 1);\n\nconst pending = flow.get(\"pending\") || {};\npending[uid] = \"RemoteStartTransaction\";\nflow.set(\"pending\", pending);\n\nmsg.payload = JSON.stringify([2, uid, \"RemoteStartTransaction\", { idTag: \"DEADBEEF\" }]);\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 470,
+        "y": 400,
+        "wires": [
+            [
+                "ws-out"
+            ]
+        ]
+    },
+    {
+        "id": "inj-remote-stop",
+        "type": "inject",
+        "z": "flow-ocpp-mock-csms",
+        "name": "⏹ RemoteStopTransaction",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 190,
+        "y": 450,
+        "wires": [
+            [
+                "fn-remote-stop"
+            ]
+        ]
+    },
+    {
+        "id": "fn-remote-stop",
+        "type": "function",
+        "z": "flow-ocpp-mock-csms",
+        "name": "RemoteStop",
+        "func": "const tx = flow.get(\"activeTx\");\nif (!tx) { node.warn(\"no active transaction | 当前没有进行中的事务\"); return null; }\n\nconst uid = \"op-\" + ((flow.get(\"opSeq\") || 0) + 1);\nflow.set(\"opSeq\", (flow.get(\"opSeq\") || 0) + 1);\n\nconst pending = flow.get(\"pending\") || {};\npending[uid] = \"RemoteStopTransaction\";\nflow.set(\"pending\", pending);\n\nmsg.payload = JSON.stringify([2, uid, \"RemoteStopTransaction\", { transactionId: tx }]);\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 470,
+        "y": 450,
+        "wires": [
+            [
+                "ws-out"
+            ]
+        ]
+    },
+    {
+        "id": "inj-profile-16",
+        "type": "inject",
+        "z": "flow-ocpp-mock-csms",
+        "name": "⚡ curtail to 16 A",
+        "props": [
+            {
+                "p": "limit",
+                "v": "16",
+                "vt": "num"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 170,
+        "y": 510,
+        "wires": [
+            [
+                "fn-set-profile"
+            ]
+        ]
+    },
+    {
+        "id": "inj-profile-6",
+        "type": "inject",
+        "z": "flow-ocpp-mock-csms",
+        "name": "⚡ curtail to 6 A",
+        "props": [
+            {
+                "p": "limit",
+                "v": "6",
+                "vt": "num"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 170,
+        "y": 555,
+        "wires": [
+            [
+                "fn-set-profile"
+            ]
+        ]
+    },
+    {
+        "id": "inj-profile-32",
+        "type": "inject",
+        "z": "flow-ocpp-mock-csms",
+        "name": "⚡ release to 32 A",
+        "props": [
+            {
+                "p": "limit",
+                "v": "32",
+                "vt": "num"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 175,
+        "y": 600,
+        "wires": [
+            [
+                "fn-set-profile"
+            ]
+        ]
+    },
+    {
+        "id": "fn-set-profile",
+        "type": "function",
+        "z": "flow-ocpp-mock-csms",
+        "name": "SetChargingProfile",
+        "func": "// The message this whole lab is about: curtail the station.\n// 整个实验室的核心消息: 对充电桩限功率。\n//\n// msg.limit lets one inject node serve several buttons.\n// msg.limit 让一个 function 节点服务多个按钮。\nconst limit = (msg.limit !== undefined) ? Number(msg.limit) : 16;\n\nconst uid = \"op-\" + ((flow.get(\"opSeq\") || 0) + 1);\nflow.set(\"opSeq\", (flow.get(\"opSeq\") || 0) + 1);\n\nconst pending = flow.get(\"pending\") || {};\npending[uid] = \"SetChargingProfile\";\nflow.set(\"pending\", pending);\n\nmsg.payload = JSON.stringify([2, uid, \"SetChargingProfile\", {\n    connectorId: 1,\n    csChargingProfiles: {\n        chargingProfileId: 200,\n        stackLevel: 2,\n        chargingProfilePurpose: \"TxProfile\",\n        chargingProfileKind: \"Relative\",\n        chargingSchedule: {\n            chargingRateUnit: \"A\",\n            chargingSchedulePeriod: [{ startPeriod: 0, limit: limit }]\n        }\n    }\n}]);\n\nnode.status({ fill: \"blue\", shape: \"ring\", text: \"sent \" + limit + \" A\" });\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 480,
+        "y": 555,
+        "wires": [
+            [
+                "ws-out"
+            ]
+        ]
+    },
+    {
+        "id": "cmt-3",
+        "type": "comment",
+        "z": "flow-ocpp-mock-csms",
+        "name": "TODO(you): wire 'telemetry ->' into flows-dashboard.json",
+        "info": "Import flows-dashboard.json, then set this link-out's target to the\nlink-in node it contains.\n导入 flows-dashboard.json，然后把这个 link out 的目标设为其中的 link in 节点。",
+        "x": 300,
+        "y": 260,
+        "wires": []
+    }
+]

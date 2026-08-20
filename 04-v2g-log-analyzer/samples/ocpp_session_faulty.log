@@ -1,0 +1,23 @@
+# Synthetic log — hand-written to exercise every rule in rules.py.
+# 合成日志 —— 手写，用来触发 rules.py 里的每一条规则。
+# Format is identical to what the `ocpp` Python library emits.
+# 格式与 `ocpp` Python 库输出的完全一致。
+2026-08-19 09:00:00,100  ocpp   CP_7: send [2,"a1","BootNotification",{"chargePointModel":"SimCP-1","chargePointVendor":"ev-charging-lab"}]
+2026-08-19 09:00:00,140  ocpp   CP_7: receive message [3,"a1",{"currentTime":"2026-08-19T09:00:00.140000+00:00","interval":30,"status":"Accepted"}]
+2026-08-19 09:00:00,150  ocpp   CP_7: send [2,"a2","StatusNotification",{"connectorId":1,"errorCode":"NoError","status":"Available","timestamp":"2026-08-19T09:00:00.150000+00:00"}]
+2026-08-19 09:00:00,160  ocpp   CP_7: receive message [3,"a2",{}]
+2026-08-19 09:00:02,000  ocpp   CP_7: send [2,"a3","StatusNotification",{"connectorId":1,"errorCode":"NoError","status":"Charging","timestamp":"2026-08-19T09:00:02.000000+00:00"}]
+2026-08-19 09:00:02,010  ocpp   CP_7: receive message [3,"a3",{}]
+2026-08-19 09:00:03,000  ocpp   CP_7: send [2,"a4","Authorize",{"idTag":"BADCAFE"}]
+2026-08-19 09:00:03,020  ocpp   CP_7: receive message [3,"a4",{"idTagInfo":{"status":"Invalid"}}]
+2026-08-19 09:00:04,000  ocpp   CP_7: receive message [2,"b1","SetChargingProfile",{"connectorId":1,"csChargingProfiles":{"chargingProfileId":100,"stackLevel":1,"chargingProfilePurpose":"TxProfile","chargingProfileKind":"Relative"}}]
+2026-08-19 09:00:04,005  ocpp   CP_7: send [3,"b1",{"status":"Rejected"}]
+2026-08-19 09:00:06,000  ocpp   CP_7: send [2,"a5","MeterValues",{"connectorId":1,"meterValue":[{"timestamp":"2026-08-19T09:00:06.000000+00:00","sampledValue":[{"value":"120.0","measurand":"Energy.Active.Import.Register","unit":"Wh"}]}]}]
+2026-08-19 09:00:11,500  ocpp   CP_7: receive message [3,"a5",{}]
+2026-08-19 09:00:12,000  ocpp   CP_7: send [2,"a6","DataTransfer",{"vendorId":"ev-charging-lab","messageId":"ProprietaryPing"}]
+2026-08-19 09:00:12,050  ocpp   CP_7: receive message [4,"a6","NotSupported","vendorId is not registered",{}]
+2026-08-19 09:00:30,000  ocpp   CP_7: send [2,"a7","Heartbeat",{}]
+2026-08-19 09:00:30,010  ocpp   CP_7: receive message [3,"a7",{"currentTime":"2026-08-19T09:00:30.010000+00:00"}]
+2026-08-19 09:02:45,000  ocpp   CP_7: send [2,"a8","Heartbeat",{}]
+2026-08-19 09:02:45,010  ocpp   CP_7: receive message [3,"a8",{"currentTime":"2026-08-19T09:02:45.010000+00:00"}]
+2026-08-19 09:02:50,000  ocpp   CP_7: send [2,"a9","StopTransaction",{"meterStop":120,"timestamp":"2026-08-19T09:02:50.000000+00:00","transactionId":1,"reason":"PowerLoss"}]

@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Node-RED
+node_modules/
+.node-red/
+02-node-red-flows/out/*
+!02-node-red-flows/out/.gitkeep
+
+# Captures are large and often contain a real MAC address.
+# Commit only the ones you deliberately want to show.
+# 抓包文件很大且常含真实 MAC 地址，只提交你有意展示的那些。
+03-iso15118-analysis/captures/*
+!03-iso15118-analysis/captures/.gitkeep
+!03-iso15118-analysis/captures/*.md
+
+# Generated reports (regenerate with project 04)
+report.md
+*.pcap
+*.pcapng
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Personal working notes — local only, not part of the project.
+# 个人工作笔记，仅本地保留，不属于项目内容。
+AGENTS.md
+docs/INTERVIEW-QA.md

@@ -1,0 +1,4 @@
+# OCPP 1.6-J / 2.0.1 / 2.1 protocol library  |  OCPP 协议库
+ocpp>=2.0,<3
+# WebSocket transport  |  WebSocket 传输层
+websockets>=14

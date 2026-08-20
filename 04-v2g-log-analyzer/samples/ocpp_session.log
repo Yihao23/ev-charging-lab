@@ -1,0 +1,51 @@
+2026-08-19 22:35:10,544  cp     connecting to ws://localhost:9112/CP_1
+2026-08-19 22:35:10,562  ocpp   CP_1: send [2,"84eec5ee-ca8a-479b-b381-7bc18dd3b585","BootNotification",{"chargePointModel":"SimCP-1","chargePointVendor":"ev-charging-lab","firmwareVersion":"0.1.0"}]
+2026-08-19 22:35:10,565  ocpp   CP_1: receive message [3,"84eec5ee-ca8a-479b-b381-7bc18dd3b585",{"currentTime":"2026-08-19T20:35:10.564943+00:00","interval":30,"status":"Accepted"}]
+2026-08-19 22:35:10,566  cp     BootNotification -> Accepted (interval=30s)
+2026-08-19 22:35:10,566  cp     state -> Available
+2026-08-19 22:35:10,566  ocpp   CP_1: send [2,"8c65e546-ee89-40f9-9f98-c86cfbfd6ea8","StatusNotification",{"connectorId":1,"errorCode":"NoError","status":"Available","timestamp":"2026-08-19T20:35:10.566522+00:00"}]
+2026-08-19 22:35:10,568  ocpp   CP_1: receive message [3,"8c65e546-ee89-40f9-9f98-c86cfbfd6ea8",{}]
+2026-08-19 22:35:11,569  cp     state -> Preparing
+2026-08-19 22:35:11,571  ocpp   CP_1: send [2,"07d2f0bd-133f-470d-bf3e-71d2da00464e","StatusNotification",{"connectorId":1,"errorCode":"NoError","status":"Preparing","timestamp":"2026-08-19T20:35:11.570192+00:00"}]
+2026-08-19 22:35:11,575  ocpp   CP_1: receive message [3,"07d2f0bd-133f-470d-bf3e-71d2da00464e",{}]
+2026-08-19 22:35:11,577  ocpp   CP_1: send [2,"c0b8ab7d-65be-4bc6-9457-372d27f19a1c","Authorize",{"idTag":"DEADBEEF"}]
+2026-08-19 22:35:11,579  ocpp   CP_1: receive message [3,"c0b8ab7d-65be-4bc6-9457-372d27f19a1c",{"idTagInfo":{"status":"Accepted"}}]
+2026-08-19 22:35:11,580  cp     Authorize(DEADBEEF) -> Accepted
+2026-08-19 22:35:11,581  ocpp   CP_1: send [2,"7a50db60-8da7-4891-863c-9b557c080fb9","StartTransaction",{"connectorId":1,"idTag":"DEADBEEF","meterStart":0,"timestamp":"2026-08-19T20:35:11.581000+00:00"}]
+2026-08-19 22:35:11,584  ocpp   CP_1: receive message [3,"7a50db60-8da7-4891-863c-9b557c080fb9",{"transactionId":1,"idTagInfo":{"status":"Accepted"}}]
+2026-08-19 22:35:11,585  cp     StartTransaction -> transactionId=1
+2026-08-19 22:35:11,585  cp     state -> Charging
+2026-08-19 22:35:11,586  ocpp   CP_1: send [2,"b90fc344-2a97-4e7f-a476-5c48816ca0e7","StatusNotification",{"connectorId":1,"errorCode":"NoError","status":"Charging","timestamp":"2026-08-19T20:35:11.585982+00:00"}]
+2026-08-19 22:35:11,588  ocpp   CP_1: receive message [3,"b90fc344-2a97-4e7f-a476-5c48816ca0e7",{}]
+2026-08-19 22:35:14,567  ocpp   CP_1: receive message [2,"ba80356a-6ac1-4df1-a3c3-61edbf5a7556","SetChargingProfile",{"connectorId":1,"csChargingProfiles":{"chargingProfileId":100,"stackLevel":1,"chargingProfilePurpose":"TxProfile","chargingProfileKind":"Relative","chargingSchedule":{"chargingRateUnit":"A","chargingSchedulePeriod":[{"startPeriod":0,"limit":32.0},{"startPeriod":30,"limit":16.0},{"startPeriod":60,"limit":8.0}]}}}]
+2026-08-19 22:35:14,569  cp     SetChargingProfile accepted: id=100 purpose=TxProfile stack=1 periods=3
+2026-08-19 22:35:14,570  ocpp   CP_1: send [3,"ba80356a-6ac1-4df1-a3c3-61edbf5a7556",{"status":"Accepted"}]
+2026-08-19 22:35:15,566  ocpp   CP_1: send [2,"f468a86c-fdbc-482d-82b4-0bcb97be5ab1","MeterValues",{"connectorId":1,"meterValue":[{"timestamp":"2026-08-19T20:35:15.563988+00:00","sampledValue":[{"value":"10.2","measurand":"Energy.Active.Import.Register","unit":"Wh"},{"value":"7360.0","measurand":"Power.Active.Import","unit":"W"},{"value":"32.0","measurand":"Current.Import","unit":"A"}]}],"transactionId":1}]
+2026-08-19 22:35:15,575  ocpp   CP_1: receive message [3,"f468a86c-fdbc-482d-82b4-0bcb97be5ab1",{}]
+2026-08-19 22:35:20,583  ocpp   CP_1: send [2,"b34ffae8-b631-4c51-9ea8-21189fc7b8b1","MeterValues",{"connectorId":1,"meterValue":[{"timestamp":"2026-08-19T20:35:20.581968+00:00","sampledValue":[{"value":"20.4","measurand":"Energy.Active.Import.Register","unit":"Wh"},{"value":"7360.0","measurand":"Power.Active.Import","unit":"W"},{"value":"32.0","measurand":"Current.Import","unit":"A"}]}],"transactionId":1}]
+2026-08-19 22:35:20,588  ocpp   CP_1: receive message [3,"b34ffae8-b631-4c51-9ea8-21189fc7b8b1",{}]
+2026-08-19 22:35:25,595  ocpp   CP_1: send [2,"d936309d-deb0-4d41-a82c-f46abc838a7a","MeterValues",{"connectorId":1,"meterValue":[{"timestamp":"2026-08-19T20:35:25.594335+00:00","sampledValue":[{"value":"30.7","measurand":"Energy.Active.Import.Register","unit":"Wh"},{"value":"7360.0","measurand":"Power.Active.Import","unit":"W"},{"value":"32.0","measurand":"Current.Import","unit":"A"}]}],"transactionId":1}]
+2026-08-19 22:35:25,605  ocpp   CP_1: receive message [3,"d936309d-deb0-4d41-a82c-f46abc838a7a",{}]
+2026-08-19 22:35:30,608  ocpp   CP_1: send [2,"50528f82-e34c-4524-878f-b0b0a80021e8","MeterValues",{"connectorId":1,"meterValue":[{"timestamp":"2026-08-19T20:35:30.606536+00:00","sampledValue":[{"value":"40.9","measurand":"Energy.Active.Import.Register","unit":"Wh"},{"value":"7360.0","measurand":"Power.Active.Import","unit":"W"},{"value":"32.0","measurand":"Current.Import","unit":"A"}]}],"transactionId":1}]
+2026-08-19 22:35:30,612  ocpp   CP_1: receive message [3,"50528f82-e34c-4524-878f-b0b0a80021e8",{}]
+2026-08-19 22:35:35,619  ocpp   CP_1: send [2,"87291167-3857-4030-9f24-a3b8d7eda46f","MeterValues",{"connectorId":1,"meterValue":[{"timestamp":"2026-08-19T20:35:35.617833+00:00","sampledValue":[{"value":"51.1","measurand":"Energy.Active.Import.Register","unit":"Wh"},{"value":"7360.0","measurand":"Power.Active.Import","unit":"W"},{"value":"32.0","measurand":"Current.Import","unit":"A"}]}],"transactionId":1}]
+2026-08-19 22:35:35,624  ocpp   CP_1: receive message [3,"87291167-3857-4030-9f24-a3b8d7eda46f",{}]
+2026-08-19 22:35:40,568  ocpp   CP_1: send [2,"ef6dfa9c-e8ec-4d94-bdd4-68a21da2c286","Heartbeat",{}]
+2026-08-19 22:35:40,573  ocpp   CP_1: receive message [3,"ef6dfa9c-e8ec-4d94-bdd4-68a21da2c286",{"currentTime":"2026-08-19T20:35:40.571339+00:00"}]
+2026-08-19 22:35:40,628  ocpp   CP_1: send [2,"c39cfa05-04b9-4510-9783-e938440af358","MeterValues",{"connectorId":1,"meterValue":[{"timestamp":"2026-08-19T20:35:40.626010+00:00","sampledValue":[{"value":"61.3","measurand":"Energy.Active.Import.Register","unit":"Wh"},{"value":"7360.0","measurand":"Power.Active.Import","unit":"W"},{"value":"32.0","measurand":"Current.Import","unit":"A"}]}],"transactionId":1}]
+2026-08-19 22:35:40,631  ocpp   CP_1: receive message [3,"c39cfa05-04b9-4510-9783-e938440af358",{}]
+2026-08-19 22:35:45,637  cp     t=   34s  EV wants 32.0A, profile caps at 16.0A -> delivering 16.0A (3.68 kW)
+2026-08-19 22:35:45,639  ocpp   CP_1: send [2,"a5a97567-e239-4dc0-8266-3cc8d8ba7cf6","MeterValues",{"connectorId":1,"meterValue":[{"timestamp":"2026-08-19T20:35:45.638260+00:00","sampledValue":[{"value":"66.4","measurand":"Energy.Active.Import.Register","unit":"Wh"},{"value":"3680.0","measurand":"Power.Active.Import","unit":"W"},{"value":"16.0","measurand":"Current.Import","unit":"A"}]}],"transactionId":1}]
+2026-08-19 22:35:45,647  ocpp   CP_1: receive message [3,"a5a97567-e239-4dc0-8266-3cc8d8ba7cf6",{}]
+2026-08-19 22:35:50,649  cp     t=   39s  EV wants 32.0A, profile caps at 16.0A -> delivering 16.0A (3.68 kW)
+2026-08-19 22:35:50,651  ocpp   CP_1: send [2,"ef7385e0-4b23-4f24-982c-8b24c44ad0a6","MeterValues",{"connectorId":1,"meterValue":[{"timestamp":"2026-08-19T20:35:50.650167+00:00","sampledValue":[{"value":"71.6","measurand":"Energy.Active.Import.Register","unit":"Wh"},{"value":"3680.0","measurand":"Power.Active.Import","unit":"W"},{"value":"16.0","measurand":"Current.Import","unit":"A"}]}],"transactionId":1}]
+2026-08-19 22:35:50,660  ocpp   CP_1: receive message [3,"ef7385e0-4b23-4f24-982c-8b24c44ad0a6",{}]
+2026-08-19 22:35:51,590  cp     state -> Finishing
+2026-08-19 22:35:51,592  ocpp   CP_1: send [2,"d5e34feb-da9a-4198-8d71-9fcbb7c63661","StatusNotification",{"connectorId":1,"errorCode":"NoError","status":"Finishing","timestamp":"2026-08-19T20:35:51.591330+00:00"}]
+2026-08-19 22:35:51,596  ocpp   CP_1: receive message [3,"d5e34feb-da9a-4198-8d71-9fcbb7c63661",{}]
+2026-08-19 22:35:51,598  ocpp   CP_1: send [2,"d380bc75-8852-427b-8ced-f50c75e00d13","StopTransaction",{"meterStop":71,"timestamp":"2026-08-19T20:35:51.597338+00:00","transactionId":1,"reason":"Local"}]
+2026-08-19 22:35:51,601  ocpp   CP_1: receive message [3,"d380bc75-8852-427b-8ced-f50c75e00d13",{}]
+2026-08-19 22:35:51,602  cp     StopTransaction(tx=1, reason=Local)
+2026-08-19 22:35:51,602  cp     state -> Available
+2026-08-19 22:35:51,603  ocpp   CP_1: send [2,"51c2a7cd-a9fd-45f9-9098-c01701175f3c","StatusNotification",{"connectorId":1,"errorCode":"NoError","status":"Available","timestamp":"2026-08-19T20:35:51.603024+00:00"}]
+2026-08-19 22:35:51,605  ocpp   CP_1: receive message [3,"51c2a7cd-a9fd-45f9-9098-c01701175f3c",{}]

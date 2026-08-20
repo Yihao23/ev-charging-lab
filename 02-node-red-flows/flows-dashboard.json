@@ -1,0 +1,215 @@
+[
+    {
+        "id": "flow-ocpp-dashboard",
+        "type": "tab",
+        "label": "OCPP dashboard",
+        "disabled": false,
+        "info": "REQUIRES node-red-dashboard:  npm install node-red-dashboard\n需要 node-red-dashboard:  npm install node-red-dashboard\n\nOpen http://localhost:1880/ui after importing.\n导入后打开 http://localhost:1880/ui"
+    },
+    {
+        "id": "ui-base",
+        "type": "ui_base",
+        "theme": {
+            "name": "theme-dark",
+            "darkTheme": {
+                "default": true
+            }
+        },
+        "site": {
+            "name": "EV Charging Lab",
+            "hideToolbar": "false",
+            "allowSwipe": "false",
+            "dateFormat": "HH:mm:ss"
+        }
+    },
+    {
+        "id": "ui-tab-1",
+        "type": "ui_tab",
+        "name": "Charging session",
+        "icon": "ev-station",
+        "order": 1,
+        "disabled": false,
+        "hidden": false
+    },
+    {
+        "id": "ui-grp-state",
+        "type": "ui_group",
+        "name": "Connector",
+        "tab": "ui-tab-1",
+        "order": 1,
+        "disp": true,
+        "width": 6,
+        "collapse": false
+    },
+    {
+        "id": "ui-grp-power",
+        "type": "ui_group",
+        "name": "Power",
+        "tab": "ui-tab-1",
+        "order": 2,
+        "disp": true,
+        "width": 12,
+        "collapse": false
+    },
+    {
+        "id": "ui-grp-ops",
+        "type": "ui_group",
+        "name": "Operator",
+        "tab": "ui-tab-1",
+        "order": 3,
+        "disp": true,
+        "width": 6,
+        "collapse": false
+    },
+    {
+        "id": "cmt-dash",
+        "type": "comment",
+        "z": "flow-ocpp-dashboard",
+        "name": "Feed from flows.json 'telemetry ->' link out  |  数据来自 flows.json 的 link out",
+        "info": "",
+        "x": 300,
+        "y": 60,
+        "wires": []
+    },
+    {
+        "id": "lnk-in-telemetry",
+        "type": "link in",
+        "z": "flow-ocpp-dashboard",
+        "name": "telemetry <-",
+        "links": [],
+        "x": 115,
+        "y": 140,
+        "wires": [
+            [
+                "fn-split"
+            ]
+        ]
+    },
+    {
+        "id": "fn-split",
+        "type": "function",
+        "z": "flow-ocpp-dashboard",
+        "name": "split to widgets",
+        "func": "// One telemetry record fans out to the dashboard widgets.\n// 一条遥测记录扇出到各个仪表盘控件。\n// Output order / 输出顺序: 1 status  2 current  3 power  4 transaction\nconst r = msg.payload;\n\nconst status  = { payload: r.status };\nconst current = (r.current_a === null) ? null : { payload: r.current_a };\nconst power   = (r.power_w  === null) ? null : { payload: r.power_w, topic: \"Power (W)\" };\nconst tx      = { payload: r.tx ? (\"tx \" + r.tx) : \"idle\" };\n\nreturn [status, current, power, tx];",
+        "outputs": 4,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 300,
+        "y": 140,
+        "wires": [
+            [
+                "ui-status"
+            ],
+            [
+                "ui-current"
+            ],
+            [
+                "ui-power"
+            ],
+            [
+                "ui-tx"
+            ]
+        ]
+    },
+    {
+        "id": "ui-status",
+        "type": "ui_text",
+        "z": "flow-ocpp-dashboard",
+        "group": "ui-grp-state",
+        "order": 1,
+        "width": 6,
+        "height": 1,
+        "name": "connector status",
+        "label": "Status",
+        "format": "{{msg.payload}}",
+        "layout": "row-spread",
+        "x": 560,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "ui-tx",
+        "type": "ui_text",
+        "z": "flow-ocpp-dashboard",
+        "group": "ui-grp-state",
+        "order": 2,
+        "width": 6,
+        "height": 1,
+        "name": "transaction",
+        "label": "Transaction",
+        "format": "{{msg.payload}}",
+        "layout": "row-spread",
+        "x": 550,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "ui-current",
+        "type": "ui_gauge",
+        "z": "flow-ocpp-dashboard",
+        "group": "ui-grp-power",
+        "order": 1,
+        "width": 4,
+        "height": 4,
+        "gtype": "gage",
+        "title": "Current",
+        "label": "A",
+        "format": "{{value}}",
+        "min": 0,
+        "max": "32",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "16",
+        "seg2": "26",
+        "x": 550,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "ui-power",
+        "type": "ui_chart",
+        "z": "flow-ocpp-dashboard",
+        "group": "ui-grp-power",
+        "order": 2,
+        "width": 8,
+        "height": 4,
+        "label": "Delivered power",
+        "chartType": "line",
+        "legend": "false",
+        "xformat": "HH:mm:ss",
+        "interpolate": "step",
+        "nodata": "waiting for MeterValues",
+        "ymin": "0",
+        "ymax": "",
+        "removeOlder": 1,
+        "removeOlderPoints": "",
+        "removeOlderUnit": "3600",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#1f9bcf"
+        ],
+        "outputs": 1,
+        "x": 550,
+        "y": 200,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "cmt-dash-todo",
+        "type": "comment",
+        "z": "flow-ocpp-dashboard",
+        "name": "TODO(you): add ui_button nodes here, wired back to flows.json",
+        "info": "Add three ui_button nodes in group 'Operator':\n  RemoteStart / RemoteStop / curtail to 16 A\nWire each through a 'link out' back into flows.json's function nodes,\nso the dashboard replaces the inject buttons.\n\n在 Operator 分组里加三个 ui_button 节点，各自经 link out 接回\nflows.json 里的 function 节点，用仪表盘按钮取代 inject 按钮。",
+        "x": 320,
+        "y": 400,
+        "wires": []
+    }
+]
