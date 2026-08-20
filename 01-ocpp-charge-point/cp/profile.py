@@ -25,6 +25,21 @@ No I/O here on purpose — everything is unit-testable.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
+
+# Nominal phase voltage assumed when converting between W and A.
+# W <-> A 换算时假设的相电压。
+#
+# State this explicitly: a charging profile carries a number and a unit, but
+# never a voltage. Guessing wrong here is how a station ends up over-drawing.
+# 必须显式写出来: 充电曲线只带一个数和一个单位，从不带电压。这里猜错，
+# 就是充电桩过流的来源。
+#
+# 230 V is the European single-phase nominal. For three-phase, multiply by the
+# phase count: 3 x 230 V x 16 A = 11.04 kW (equivalently sqrt(3) x 400 V x 16 A).
+# 230 V 是欧洲单相额定值。三相时乘以相数: 3 x 230 V x 16 A = 11.04 kW
+# (等价于 sqrt(3) x 400 V x 16 A)。
+NOMINAL_VOLTAGE_V = 230.0
 
 # Precedence defined by OCPP 1.6 §3.13. Higher number wins.
 # OCPP 1.6 §3.13 定义的优先级，数字越大优先级越高。
@@ -56,6 +71,10 @@ class Profile:
     periods: tuple[Period, ...]
     duration: int | None = None  # schedule length in seconds | 计划总时长(秒)
     min_charging_rate: float | None = None
+    start_schedule: datetime | None = None   # 第 3 层: chargingSchedule.startSchedule
+    recurrency_kind: str | None = None       # 第 2 层: Daily | Weekly
+    valid_from: datetime | None = None       # 第 2 层
+    valid_to: datetime | None = None         # 第 2 层
 
 
 def _get(d: dict, *names, default=None):
@@ -76,6 +95,14 @@ def _get(d: dict, *names, default=None):
         if n in d:
             return d[n]
     return default
+
+
+def _dt(value) -> datetime | None:
+    """ISO 8601 string -> datetime; pass a datetime through unchanged.
+    ISO 8601 字符串 -> datetime；已经是 datetime 就原样返回。"""
+    if value is None or isinstance(value, datetime):
+        return value
+    return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
 
 
 def parse(cs_charging_profiles: dict) -> Profile:
@@ -106,10 +133,34 @@ def parse(cs_charging_profiles: dict) -> Profile:
         periods=periods,
         duration=schedule.get("duration"),
         min_charging_rate=_get(schedule, "minChargingRate", "min_charging_rate"),
+        # NOTE the nesting levels / 注意层级:
+        #   startSchedule 在 chargingSchedule 里(第 3 层)
+        #   recurrencyKind / validFrom / validTo 在 csChargingProfiles 里(第 2 层)
+        start_schedule=_dt(_get(schedule, "startSchedule", "start_schedule")),
+        recurrency_kind=_get(cs_charging_profiles, "recurrencyKind", "recurrency_kind"),
+        valid_from=_dt(_get(cs_charging_profiles, "validFrom", "valid_from")),
+        valid_to=_dt(_get(cs_charging_profiles, "validTo", "valid_to")),
     )
 
+def _elapsed_for(profile, tx_elapsed_s, now) -> float | None:
+      """把三种 kind 折算成统一的「相对计划起点的秒数」。
+      Relative  → 事务开始到现在
+      Absolute  → startSchedule 到现在
+      Recurring → 当前周期起点到现在（取模）
+      """
+      if profile.kind == "Relative":
+          return tx_elapsed_s
+      if profile.kind == "Absolute":
+          if profile.start_schedule is None:
+              return None
+          return (now - profile.start_schedule).total_seconds()
+      if profile.kind == "Recurring":
+          period = 86400 if profile.recurrency_kind == "Daily" else 604800
+          anchor = profile.start_schedule          # 周期锚点
+          return (now - anchor).total_seconds() % period    # ← 取模，就是"每天重来"
+      return None
 
-def limit_at(profile: Profile, elapsed_s: float) -> float | None:
+def _active_period(profile: Profile, tx_elapsed_s: float, now=None) -> Period | None:
     """Limit enforced by ONE profile `elapsed_s` seconds into the transaction.
     单条曲线在事务开始 `elapsed_s` 秒时强制的上限。
 
@@ -117,25 +168,64 @@ def limit_at(profile: Profile, elapsed_s: float) -> float | None:
     started yet.
     当计划已过期(超出 duration)或尚未开始时返回 None。
     """
+    if now is not None:
+          if profile.valid_from and now < profile.valid_from: return None
+          if profile.valid_to   and now > profile.valid_to:   return None
+
+    elapsed = _elapsed_for(profile, tx_elapsed_s, now)
+    if elapsed is None:
+        return None
+
+
     if not profile.periods:
         return None
-    if profile.duration is not None and elapsed_s >= profile.duration:
+    if profile.duration is not None and elapsed >= profile.duration:
         return None
-    if elapsed_s < profile.periods[0].start_period:
+    if elapsed < profile.periods[0].start_period:
         return None
 
     # The active period is the LAST one whose startPeriod is already reached.
     # 生效周期是最后一个 startPeriod 已经到达的周期。
     active = profile.periods[0]
     for p in profile.periods:
-        if p.start_period <= elapsed_s:
+        if p.start_period <= elapsed:
             active = p
         else:
             break
-    return active.limit
+    return active
 
 
-def effective_limit(profiles: list[Profile], elapsed_s: float, unit: str = "A") -> float | None:
+def limit_at(profile: Profile, tx_elapsed_s: float, now=None) -> float | None:
+    """Limit enforced by ONE profile, in that profile's own unit.
+    单条曲线强制的上限，单位是曲线自己的单位。"""
+    active = _active_period(profile, tx_elapsed_s, now)
+    return None if active is None else active.limit
+
+
+def _convert(value: float, from_unit: str, to_unit: str,
+             phases: int | None, voltage: float) -> float:
+    """Convert a charging rate between watts and amps.
+    在瓦特和安培之间换算充电速率。
+
+        P = U * I * numberPhases
+
+    `phases` defaults to 1 when the period does not say. Defaulting to 3 would
+    inflate an amps limit threefold — the dangerous direction, so we do not.
+    period 没写 numberPhases 时按单相。默认成三相会把安培上限放大三倍 ——
+    那是危险的方向，所以不这么做。
+    """
+    if from_unit == to_unit:
+        return value
+    n = phases or 1
+    if from_unit == "W" and to_unit == "A":
+        return value / (voltage * n)
+    if from_unit == "A" and to_unit == "W":
+        return value * voltage * n
+    raise ValueError(f"cannot convert {from_unit} -> {to_unit}")
+
+
+def effective_limit(profiles: list[Profile], elapsed_s: float, unit: str = "A",
+                    voltage: float = NOMINAL_VOLTAGE_V) -> float | None:
     """Combine all installed profiles into one number.
     把所有已安装的曲线合并成一个数。
 
@@ -148,13 +238,21 @@ def effective_limit(profiles: list[Profile], elapsed_s: float, unit: str = "A") 
     """
     winners: dict[str, tuple[int, float]] = {}
     for p in profiles:
-        if p.unit != unit:
-            # TODO(you): implement W <-> A conversion, see below.
-            # TODO(你): 实现 W <-> A 换算，见文末。
+        active = _active_period(p, elapsed_s)
+        if active is None:
             continue
-        value = limit_at(p, elapsed_s)
-        if value is None:
-            continue
+
+        # Convert into the caller's unit before comparing anything.
+        # 比较之前先统一到调用方要求的单位。
+        #
+        # The profile's unit is what the CSMS chose; `unit` is what this
+        # station reasons in (amps for AC, watts for DC). They are unrelated,
+        # and silently skipping a mismatch means the station ignores a limit
+        # the backend did send.
+        # 曲线的单位由后台决定, `unit` 是本桩内部使用的单位(交流用安培,
+        # 直流用瓦特)。两者无关, 静默跳过不匹配的曲线, 等于桩无视了后台
+        # 确实下发过的限制。
+        value = _convert(active.limit, p.unit, unit, active.number_phases, voltage)
         best = winners.get(p.purpose)
         if best is None or p.stack_level > best[0]:
             winners[p.purpose] = (p.stack_level, value)
@@ -193,7 +291,8 @@ def clamp(requested: float, limit: float | None) -> float:
 #    validFrom / validTo，并把墙钟时间折算进周期查找。用一条"仅 22:00-06:00
 #    允许 11 kW"的曲线来测试。
 #
-# 2. Unit conversion W <-> A.
+# 2. Unit conversion W <-> A.  --- DONE / 已完成 ---
+#    See `_convert()` and `effective_limit(..., voltage=)`.
 #    A CSMS may send W while the station reasons in A. Convert with
 #    P = U * I * numberPhases (and sqrt(3) for 3-phase line-to-line).
 #    State your assumed nominal voltage explicitly — getting this wrong is
