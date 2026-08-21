@@ -91,16 +91,33 @@ class ChargePoint(OcppChargePoint):
             await asyncio.sleep(self.heartbeat_interval)
             await self.call(call.Heartbeat())
 
-    async def notify_status(self, target: S) -> None:
+    async def notify_status(self, target: S,
+                            error_code: ChargePointErrorCode | None = None) -> None:
         """Transition, then tell the CSMS. Order matters — never report a
         state you failed to enter.
-        先迁移再上报。顺序很重要 —— 绝不上报一个没能进入的状态。"""
-        self.sm.to(target)
-        LOG.info("state -> %s", target.value)
+        先迁移再上报。顺序很重要 —— 绝不上报一个没能进入的状态。
+
+        `error_code` is passed straight through to the state machine, where
+        omitting it means "not reporting a code" and NoError means
+        "explicitly reporting no fault" — the latter is what releases a
+        latched fault. Defaulting to NoError here would quietly defeat the
+        latch, because every status report would look like a reset.
+        `error_code` 原样交给状态机: 省略表示"不报告错误码", NoError 表示
+        "显式报告无故障" —— 后者才是解除故障闩锁的动作。若在这里默认成
+        NoError, 每次状态上报都会被当成一次复位, 闩锁就形同虚设。
+
+        OCPP requires every StatusNotification to carry an errorCode, so
+        when the caller reports none we send the latched one.
+        OCPP 要求每条 StatusNotification 都带 errorCode, 所以调用方没报
+        错误码时, 我们把当前闩着的那个发出去。
+        """
+        self.sm.to(target, error_code=error_code)
+        wire_code = error_code if error_code is not None else self.sm.error_code
+        LOG.info("state -> %s (%s)", target.value, wire_code.value)
         await self.call(
             call.StatusNotification(
                 connector_id=self.sm.connector_id,
-                error_code=ChargePointErrorCode.no_error,
+                error_code=wire_code,
                 status=target,
                 timestamp=utcnow(),
             )
@@ -163,11 +180,36 @@ class ChargePoint(OcppChargePoint):
             wall_clock = datetime.now(timezone.utc).replace(tzinfo=None)
             limit_a = profile_mod.effective_limit(self.profiles, elapsed,
                                                   unit="A", now=wall_clock)
-            actual_a = profile_mod.clamp(EV_REQUESTED_CURRENT_A, limit_a)
+
+            # Below the EV's minimum, trickling is worse than not charging:
+            # many BMSs refuse to start, the ones that try cycle the
+            # contactors, and the driver waits for nothing. Suspend and say
+            # so, then resume when the limit recovers.
+            # 低于车的最低充电电流时，涓流比不充更糟: 很多 BMS 根本不启动，
+            # 会尝试的那些则在空耗接触器，而车主白等。挂起并明确上报，
+            # 等限值回升后再恢复。
+            suspended = profile_mod.must_suspend(self.profiles, elapsed,
+                                                 unit="A", now=wall_clock)
+            if suspended:
+                actual_a = 0.0
+                if self.sm.state is S.charging:
+                    await self.notify_status(S.suspended_evse)
+                    LOG.info("t=%5.0fs  limit %.1fA is below the EV minimum -> suspending",
+                             elapsed, limit_a if limit_a is not None else -1)
+            else:
+                actual_a = profile_mod.clamp(EV_REQUESTED_CURRENT_A, limit_a)
+                if self.sm.state is S.suspended_evse:
+                    await self.notify_status(S.charging)
+                    LOG.info("t=%5.0fs  limit recovered to %.1fA -> resuming",
+                             elapsed, actual_a)
+
             power_w = actual_a * NOMINAL_VOLTAGE_V
             self.meter_wh += power_w * METER_INTERVAL_S / 3600.0
 
-            if limit_a is not None and actual_a < EV_REQUESTED_CURRENT_A:
+            # Keep metering while suspended: the backend still needs to see
+            # that the station is alive and delivering nothing.
+            # 挂起期间照常上报: 后台仍需要知道桩还活着、只是没在送电。
+            if not suspended and limit_a is not None and actual_a < EV_REQUESTED_CURRENT_A:
                 LOG.info(
                     "t=%5.0fs  EV wants %.1fA, profile caps at %.1fA -> delivering %.1fA (%.2f kW)",
                     elapsed, EV_REQUESTED_CURRENT_A, limit_a, actual_a, power_w / 1000,
