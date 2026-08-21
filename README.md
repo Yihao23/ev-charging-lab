@@ -144,8 +144,26 @@ Full breakdown: [`docs/14-DAY-PLAN.md`](docs/14-DAY-PLAN.md)
 
 ## Screenshots / 截图
 
-> Replace these once you have them. An interviewer opens images, not code.
-> 有了之后替换掉。面试官会打开图片，不会打开代码。
+The station in this repo, driven by [SteVe](https://github.com/steve-community/steve)
+— an open-source OCPP 1.6 CSMS in production use since 2013.
+本仓库的充电桩，由 [SteVe](https://github.com/steve-community/steve) 驱动 ——
+一个 2013 年至今仍在生产使用的开源 OCPP 1.6 后台。
+
+![A complete transaction recorded by SteVe](01-ocpp-charge-point/screenshots/steve-transaction.png)
+
+A transaction started from SteVe's web UI: 1686 Wh over 14 minutes, opened and
+closed by `RemoteStartTransaction` / `RemoteStopTransaction`.
+从 SteVe 的 Web 界面发起的一次事务: 14 分钟 1686 Wh，由远程启停指令开始和结束。
+
+| Image | What it shows | 说明 |
+|---|---|---|
+| [`steve-transaction.png`](01-ocpp-charge-point/screenshots/steve-transaction.png) | ⭐ The completed transaction, start to stop | 完整的事务记录 |
+| [`steve-chargepoint-details.png`](01-ocpp-charge-point/screenshots/steve-chargepoint-details.png) | The vendor / model / firmware strings this code sends in `BootNotification`, stored by SteVe | 代码里写的厂商/型号/固件，一路存进 SteVe |
+| [`steve-dashboard.png`](01-ocpp-charge-point/screenshots/steve-dashboard.png) | SteVe's dashboard mid-charge | 充电中的后台总览 |
+| [`steve-connected.png`](01-ocpp-charge-point/screenshots/steve-connected.png) | The OCPP 1.6-J WebSocket session, live | 实时的 OCPP 1.6-J 连接 |
+| [`steve-connector-status.png`](01-ocpp-charge-point/screenshots/steve-connector-status.png) | Connector back to `Available` after the stop | 停止后接口回到 Available |
+
+Still to come / 还没有的:
 
 | | |
 |---|---|

@@ -41,8 +41,8 @@ only reading produces nothing you can show.
 
 ### Day 4 · Make it look like a product / 让它像产品
 
-- [ ] `docker compose up -d` (SteVe), register `CP_1`, connect to it.
-- [ ] `RemoteStartTransaction` from SteVe's web UI.
+- [X] `docker compose up -d` (SteVe), register `CP_1`, connect to it.
+- [X] `RemoteStartTransaction` from SteVe's web UI.
 - [ ] `charge_point.py` TODO 4 — offline queueing. Kill the CSMS mid-transaction.
 
 - **Commit:** a screenshot of SteVe showing your transaction.
