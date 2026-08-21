@@ -394,6 +394,49 @@ class TestMinChargingRate(unittest.TestCase):
         p = self.make(6.0)
         self.assertFalse(P.must_suspend([p], 0))
 
+    def test_min_rate_is_converted_from_the_profiles_own_unit(self):
+        """minChargingRate carries the PROFILE's unit, not the caller's.
+        minChargingRate 用的是**曲线自己的**单位，不是调用方的。
+
+        A watts profile that is not converted compares amps against watts
+        and suspends forever: 6 < 2300 is always true.
+        瓦特曲线若不换算，就会拿安培和瓦特相比，永远挂起: 6 < 2300 恒真。
+
+        1380 W == 6 A and 2300 W == 10 A at 230 V single-phase, so this
+        profile really is below its own minimum and must suspend — but for
+        the right reason.
+        230 V 单相下 1380 W == 6 A、2300 W == 10 A，所以这条曲线确实低于
+        自己的下限、确实该挂起 —— 但要因为正确的理由。
+        """
+        w = P.parse({
+            "chargingProfileId": 1, "stackLevel": 0,
+            "chargingProfilePurpose": "TxProfile",
+            "chargingProfileKind": "Relative",
+            "chargingSchedule": {
+                "chargingRateUnit": "W",
+                "minChargingRate": 2300.0,
+                "chargingSchedulePeriod": [
+                    {"startPeriod": 0, "limit": 1380.0, "numberPhases": 1}],
+            },
+        })
+        self.assertEqual(P.effective_limit([w], 0, unit="A"), 6.0)
+        self.assertTrue(P.must_suspend([w], 0, unit="A"))
+
+        # Raise the limit above the minimum: 2760 W == 12 A > 10 A.
+        # 把上限提到最低值之上: 2760 W == 12 A > 10 A。
+        w2 = P.parse({
+            "chargingProfileId": 2, "stackLevel": 0,
+            "chargingProfilePurpose": "TxProfile",
+            "chargingProfileKind": "Relative",
+            "chargingSchedule": {
+                "chargingRateUnit": "W",
+                "minChargingRate": 2300.0,
+                "chargingSchedulePeriod": [
+                    {"startPeriod": 0, "limit": 2760.0, "numberPhases": 1}],
+            },
+        })
+        self.assertFalse(P.must_suspend([w2], 0, unit="A"))
+
     def test_no_profiles_never_suspends(self):
         self.assertFalse(P.must_suspend([], 0))
 

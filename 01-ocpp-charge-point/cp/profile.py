@@ -237,17 +237,21 @@ def _convert(value: float, from_unit: str, to_unit: str,
     raise ValueError(f"cannot convert {from_unit} -> {to_unit}")
 
 
-def effective_limit(profiles: list[Profile], elapsed_s: float, unit: str = "A",
-                    voltage: float = NOMINAL_VOLTAGE_V,
-                    now: datetime | None = None) -> float | None:
-    """Combine all installed profiles into one number.
-    把所有已安装的曲线合并成一个数。
+def _resolve(profiles: list[Profile], elapsed_s: float, unit: str,
+             voltage: float, now: datetime | None
+             ) -> tuple[float, Profile, Period] | None:
+    """Pick the governing profile and its limit, converted into `unit`.
+    选出生效的曲线及其上限，并换算到 `unit`。
 
-    `now` must be forwarded all the way down: an Absolute or Recurring
-    schedule is meaningless without wall-clock time, and dropping it here
-    is invisible to any test that calls `limit_at` directly.
-    `now` 必须一路传到底: Absolute / Recurring 曲线离开墙钟时间就没有意义，
-    而在这一层把它丢掉，任何直接调用 `limit_at` 的测试都发现不了。
+    Returns (limit, winning_profile, its_active_period), or None when no
+    profile applies right now.
+    返回 (上限, 生效的曲线, 该曲线当前生效的周期)，当前没有曲线适用时返回 None。
+
+    Both `effective_limit` and `must_suspend` need this. Keeping the
+    selection in one place means the two can never disagree about which
+    profile is in charge.
+    `effective_limit` 和 `must_suspend` 都需要它。把"选谁"集中在一处，
+    两者就不可能对"哪条曲线说了算"产生分歧。
 
     Rule / 规则:
         1. Group by purpose. Within a purpose, the highest `stackLevel` wins.
@@ -255,8 +259,12 @@ def effective_limit(profiles: list[Profile], elapsed_s: float, unit: str = "A",
         2. Across purposes, the more specific purpose wins, but
            ChargePointMaxProfile always acts as a hard ceiling on top.
            跨 purpose 时更具体者生效，但 ChargePointMaxProfile 始终作为硬上限。
+
+    `now` must be forwarded all the way down: an Absolute or Recurring
+    schedule is meaningless without wall-clock time.
+    `now` 必须一路传到底: Absolute / Recurring 曲线离开墙钟时间就没有意义。
     """
-    winners: dict[str, tuple[int, float]] = {}
+    winners: dict[str, tuple[int, float, Profile, Period]] = {}
     for p in profiles:
         active = _active_period(p, elapsed_s, now)
         if active is None:
@@ -275,21 +283,75 @@ def effective_limit(profiles: list[Profile], elapsed_s: float, unit: str = "A",
         value = _convert(active.limit, p.unit, unit, active.number_phases, voltage)
         best = winners.get(p.purpose)
         if best is None or p.stack_level > best[0]:
-            winners[p.purpose] = (p.stack_level, value)
+            winners[p.purpose] = (p.stack_level, value, p, active)
 
     if not winners:
         return None
 
     # Most specific purpose that produced a value.  产生了值的最具体 purpose。
     chosen_purpose = max(winners, key=lambda k: PURPOSE_RANK.get(k, -1))
-    limit = winners[chosen_purpose][1]
+    _, limit, winner, active = winners[chosen_purpose]
 
     # ChargePointMaxProfile is a ceiling, never a floor.
     # ChargePointMaxProfile 只做上限，不做下限。
+    #
+    # The ceiling can lower the number, but it does not become "the profile
+    # in charge" — minChargingRate still belongs to the chosen purpose.
+    # 天花板可以压低数值，但它不因此成为"说了算的那条曲线"——
+    # minChargingRate 仍然属于胜出的那个 purpose。
     ceiling = winners.get("ChargePointMaxProfile")
     if ceiling is not None:
         limit = min(limit, ceiling[1])
-    return limit
+    return limit, winner, active
+
+
+def effective_limit(profiles: list[Profile], elapsed_s: float, unit: str = "A",
+                    voltage: float = NOMINAL_VOLTAGE_V,
+                    now: datetime | None = None) -> float | None:
+    """Combine all installed profiles into one number, in `unit`.
+    把所有已安装的曲线合并成一个数，单位是 `unit`。"""
+    resolved = _resolve(profiles, elapsed_s, unit, voltage, now)
+    return None if resolved is None else resolved[0]
+
+
+def must_suspend(profiles: list[Profile], elapsed_s: float, unit: str = "A",
+                 voltage: float = NOMINAL_VOLTAGE_V,
+                 now: datetime | None = None) -> bool:
+    """True when the effective limit is below what charging is worth.
+    当生效上限低到不值得充电时返回 True。
+
+    OCPP 1.6 `minChargingRate` is the lowest rate the EV supports. Below it
+    many BMSs refuse to start at all, and a station that trickles anyway
+    just cycles its contactors while the driver waits for nothing. The
+    station should report SuspendedEVSE instead, so the backend and the
+    driver both learn that no useful power is available right now.
+    OCPP 1.6 的 minChargingRate 是车支持的最低速率。低于它，很多 BMS 根本
+    不启动充电; 桩若仍然涓流, 只是在空耗接触器寿命而车主白等。桩应该上报
+    SuspendedEVSE, 让后台和车主都知道当前给不出有意义的功率。
+
+    Returns False when nothing applies: no profile, or a profile that does
+    not declare a minimum. The field is optional, and absent means "no
+    lower bound", not "zero".
+    没有曲线、或曲线没声明最低值时返回 False。该字段可选，缺省表示
+    "没有下限"，不是"下限为零"。
+    """
+    resolved = _resolve(profiles, elapsed_s, unit, voltage, now)
+    if resolved is None:
+        return False
+    limit, winner, active = resolved
+
+    min_rate = winner.min_charging_rate
+    if min_rate is None:
+        return False
+
+    # minChargingRate sits next to chargingRateUnit inside chargingSchedule,
+    # so it carries the PROFILE's unit — convert it too, or a watts profile
+    # compares amps against watts and suspends forever.
+    # minChargingRate 与 chargingRateUnit 同在 chargingSchedule 里，
+    # 用的是**曲线自己的**单位 —— 也必须换算，否则瓦特曲线会拿安培和瓦特
+    # 相比，永远挂起。
+    min_rate = _convert(min_rate, winner.unit, unit, active.number_phases, voltage)
+    return limit < min_rate
 
 
 def clamp(requested: float, limit: float | None) -> float:
@@ -321,7 +383,8 @@ def clamp(requested: float, limit: float | None) -> float:
 #    (三相线电压还要乘 sqrt(3))。务必显式写明假设的额定电压 —— 这里搞错
 #    正是真实充电桩过流的常见原因。
 #
-# 3. minChargingRate.
+# 3. minChargingRate.  --- DONE / 已完成 ---
+#    See `must_suspend()`. Still to wire into charge_point.meter_loop().
 #    If the effective limit falls below minChargingRate the station should
 #    suspend (StatusNotification -> SuspendedEVSE) rather than trickle.
 #    若生效上限低于 minChargingRate，桩应该挂起(上报 SuspendedEVSE)
