@@ -25,7 +25,7 @@ No I/O here on purpose — everything is unit-testable.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 
 # Nominal phase voltage assumed when converting between W and A.
 # W <-> A 换算时假设的相电压。
@@ -98,11 +98,24 @@ def _get(d: dict, *names, default=None):
 
 
 def _dt(value) -> datetime | None:
-    """ISO 8601 string -> datetime; pass a datetime through unchanged.
-    ISO 8601 字符串 -> datetime；已经是 datetime 就原样返回。"""
-    if value is None or isinstance(value, datetime):
+    """ISO 8601 string -> naive-UTC datetime.
+    ISO 8601 字符串 -> naive-UTC datetime。
+
+    Everything inside this module is naive UTC. A CSMS may or may not put an
+    offset on `startSchedule`; mixing an aware and a naive datetime raises
+    TypeError on subtraction, which would crash the control loop mid-charge.
+    Normalising here means `_elapsed_for` never has to think about it.
+    本模块内部一律使用 naive-UTC。后台下发的 startSchedule 可能带时区也可能不带，
+    而 aware 和 naive 相减会抛 TypeError —— 那会在充电途中让控制循环崩溃。
+    在这里归一化，`_elapsed_for` 就不用操心时区。
+    """
+    if value is None:
         return value
-    return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    dt = value if isinstance(value, datetime) else \
+        datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    if dt.tzinfo is not None:
+        dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+    return dt
 
 
 def parse(cs_charging_profiles: dict) -> Profile:
@@ -225,9 +238,16 @@ def _convert(value: float, from_unit: str, to_unit: str,
 
 
 def effective_limit(profiles: list[Profile], elapsed_s: float, unit: str = "A",
-                    voltage: float = NOMINAL_VOLTAGE_V) -> float | None:
+                    voltage: float = NOMINAL_VOLTAGE_V,
+                    now: datetime | None = None) -> float | None:
     """Combine all installed profiles into one number.
     把所有已安装的曲线合并成一个数。
+
+    `now` must be forwarded all the way down: an Absolute or Recurring
+    schedule is meaningless without wall-clock time, and dropping it here
+    is invisible to any test that calls `limit_at` directly.
+    `now` 必须一路传到底: Absolute / Recurring 曲线离开墙钟时间就没有意义，
+    而在这一层把它丢掉，任何直接调用 `limit_at` 的测试都发现不了。
 
     Rule / 规则:
         1. Group by purpose. Within a purpose, the highest `stackLevel` wins.
@@ -238,7 +258,7 @@ def effective_limit(profiles: list[Profile], elapsed_s: float, unit: str = "A",
     """
     winners: dict[str, tuple[int, float]] = {}
     for p in profiles:
-        active = _active_period(p, elapsed_s)
+        active = _active_period(p, elapsed_s, now)
         if active is None:
             continue
 

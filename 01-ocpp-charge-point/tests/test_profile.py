@@ -215,6 +215,24 @@ class TestRecurring(unittest.TestCase):
         Daily 曲线离锚点一周之后照样生效，不会因为"过期"而失效。"""
         self.assertEqual(self._limit(datetime(2026, 8, 27, 23, 0)), 16.0)
 
+    def test_offset_aware_start_schedule_does_not_crash(self):
+        """A CSMS may send startSchedule with a Z offset.
+        后台下发的 startSchedule 可能带 Z 时区后缀。
+
+        Mixing an aware and a naive datetime raises TypeError on subtraction,
+        which would crash the control loop mid-charge. _dt() normalises
+        everything to naive UTC so this can never happen.
+        aware 和 naive 相减会抛 TypeError，那会在充电途中让控制循环崩溃。
+        _dt() 把一切归一化成 naive UTC，杜绝这种情况。
+        """
+        wire = dict(self.NIGHT_TARIFF)
+        wire["chargingSchedule"] = dict(self.NIGHT_TARIFF["chargingSchedule"],
+                                        startSchedule="2026-08-20T00:00:00Z")
+        profile = P.parse(wire)
+        self.assertIsNone(profile.start_schedule.tzinfo)
+        self.assertEqual(
+            P.effective_limit([profile], 0, now=datetime(2026, 8, 20, 22, 1)), 16.0)
+
     def test_effective_limit_forwards_now(self):
         """RED until `effective_limit` accepts and forwards `now`.
         在 `effective_limit` 接受并转发 `now` 之前，这条是红的。

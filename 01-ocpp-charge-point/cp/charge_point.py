@@ -158,7 +158,11 @@ class ChargePoint(OcppChargePoint):
                 continue
 
             elapsed = asyncio.get_running_loop().time() - self.tx_started_at
-            limit_a = profile_mod.effective_limit(self.profiles, elapsed, unit="A")
+            # naive UTC, to match what profile._dt() produces.
+            # naive UTC，与 profile._dt() 的产出保持一致。
+            wall_clock = datetime.now(timezone.utc).replace(tzinfo=None)
+            limit_a = profile_mod.effective_limit(self.profiles, elapsed,
+                                                  unit="A", now=wall_clock)
             actual_a = profile_mod.clamp(EV_REQUESTED_CURRENT_A, limit_a)
             power_w = actual_a * NOMINAL_VOLTAGE_V
             self.meter_wh += power_w * METER_INTERVAL_S / 3600.0
