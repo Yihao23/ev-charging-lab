@@ -368,9 +368,25 @@ class ChargePoint(OcppChargePoint):
                 LOG.error("outbox full (%d), dropped %d oldest samples",
                           MAX_OUTBOX, self._dropped)
         self.outbox.append(sample)
-        if len(self.outbox) % 20 == 1:
+
+        # Log at 1, 2, 4, 8, 16 ... so a short outage still shows its shape
+        # and an eight-hour one costs 13 lines instead of 5760. What matters
+        # is that the order of magnitude changed, not that one more arrived.
+        # 在 1, 2, 4, 8, 16 ... 时打印: 短断网仍能看出过程, 八小时的断网只花
+        # 13 行而不是 5760 行。值得报告的是"数量级变了", 不是"又多了一条"。
+        #
+        # `(n & (n - 1)) == 0` is true exactly for powers of two: n - 1
+        # borrows the single set bit and fills the lower ones, so the AND
+        # clears. The parentheses are not needed in Python, where `&` binds
+        # tighter than `==`, but they are in C — and this loop is the kind
+        # of thing that gets ported to firmware.
+        # `(n & (n - 1)) == 0` 恰好在 n 是 2 的幂时成立: n-1 借走那唯一的 1
+        # 并把低位填满, 相与即为 0。Python 里 `&` 优先级高于 `==`, 括号本可
+        # 省略, 但 C 里不行 —— 而这类循环正是会被搬进固件的东西。
+        n = len(self.outbox)
+        if (n & (n - 1)) == 0:
             LOG.info("offline: %d samples buffered, meter=%.1fWh",
-                     len(self.outbox), self.meter_wh)
+                     n, self.meter_wh)
 
     async def flush_outbox(self) -> None:
         """Replay buffered samples, oldest first, after BootNotification.
