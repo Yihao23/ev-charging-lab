@@ -62,10 +62,21 @@ and in `out/ocpp-session.jsonl`:
  "power_w":1380,"current_a":6,"energy_wh":…}
 ```
 
-`flows-dashboard.json` requires `node-red-dashboard` and was **not** run —
-it is a skeleton for you to finish (see below).
-`flows-dashboard.json` 需要 `node-red-dashboard`，**未**实际运行 ——
-它是留给你完成的骨架(见下)。
+`flows-dashboard.json` requires `node-red-dashboard` (the 3.x package, not
+`@flowfuse/node-red-dashboard` — Dashboard 2.0 renames every node type and
+this file will not import). It runs: the screenshot below is a full session
+driven from `/ui` alone.
+`flows-dashboard.json` 需要 `node-red-dashboard`(3.x 那个包, 不是
+`@flowfuse/node-red-dashboard` —— Dashboard 2.0 把每个节点类型都改名了,
+这个文件导入不进去)。它是能跑的: 下面那张截图里的完整会话全程只用 `/ui` 操作。
+
+![The bench dashboard after a passing test run](screenshots/dashboard.png)
+
+The power trace is the test itself: idle, start, curtail to 6 A, stop. The
+three PASS lines beside it are `run scenario` reporting what it observed at
+each step.
+功率曲线就是这次测试本身: 空闲、启动、限流到 6 A、停止。旁边三行 PASS 是
+`run scenario` 报告它在每一步观察到的结果。
 
 ---
 
@@ -138,16 +149,140 @@ diagnose from the field.
       完成 TODO: 在 Operator 分组加三个 `ui_button`，用仪表盘按钮取代 inject。
 
 ### Day 7 — make it a test bench / 变成测试台架
-- [ ] Add an alarm path: if `status == "Faulted"` or a `CALLERROR` arrives,
+- [X] Add an alarm path: if `status == "Faulted"` or a `CALLERROR` arrives,
       light a red indicator and append to an alarm log.
       加告警支路: 出现 `Faulted` 或 `CALLERROR` 时点亮红灯并写告警日志。
-- [ ] Add an automated scenario: on a button press, run
+- [X] Add an automated scenario: on a button press, run
       RemoteStart → wait 30 s → curtail to 6 A → wait 30 s → RemoteStop,
       and assert the station followed. That is a **test case**, not a demo.
       加自动化场景: 一键跑完 启动 → 等 30s → 限流 6A → 等 30s → 停止，
       并断言桩确实照做了。这是**测试用例**，不是 demo。
-- [ ] 📸 **Take the screenshot.** Save it to `screenshots/`. It goes in the
+- [X] 📸 **Take the screenshot.** Save it to `screenshots/`. It goes in the
       top-level README. / **截图**，存到 `screenshots/`，放进顶层 README。
+
+---
+
+## What was built on top / 在骨架之上加了什么
+
+The flow shipped in this repo was a decode-and-reply skeleton. Three things
+were added while working through days 5 to 7, and each one came out of
+watching the bench misbehave rather than from a list.
+仓库里原本的流程只是"解码并回复"的骨架。Day 5–7 期间加了三样东西，
+每一样都不是照着清单做的，而是看着台架出问题才加的。
+
+### Alarm routing / 告警分流
+
+`Faulted?` is a `switch` on `msg.payload.status`. The Faulted branch writes
+to `alarms.jsonl` and lights a red field on the dashboard; the `otherwise`
+branch clears that field.
+`Faulted?` 是一个按 `msg.payload.status` 分流的 switch。故障那一路写
+`alarms.jsonl` 并点亮仪表盘上的红字, `otherwise` 那一路把红字清掉。
+
+The second branch is the part worth arguing for. Without it the station
+recovers, `Status` returns to `Available`, and the alarm keeps saying
+`GroundFailure` — two fields on the same panel contradicting each other. An
+alarm that never clears stops being read.
+第二条分支才是值得辩护的部分。没有它, 桩恢复之后 `Status` 变回 `Available`,
+而告警仍然写着 `GroundFailure` —— 同一块面板上两个字段互相矛盾。
+一个永不消失的告警很快就没人看了。
+
+`extract telemetry` had to start carrying `error_code`, guarded so it is set
+only for StatusNotification. Attaching it unconditionally would stamp a
+fabricated `NoError` onto MeterValues, which carry no error code at all.
+为此 `extract telemetry` 要开始带上 `error_code`, 并且只在 StatusNotification
+时才设置。无条件附加会给 MeterValues 盖上一个伪造的 `NoError` ——
+那类消息根本不报告错误码。
+
+### An operator panel, not an editor / 运维面板，而不是编辑器
+
+Driving the bench used to mean opening the Node-RED editor and clicking the
+squares on inject nodes. That editor can also delete nodes and break the
+flow, so it is not something to hand to whoever is running a test. Four
+`ui_button`s — Start, 6 A, Stop, Run test — now do the same job from `/ui`,
+wired back through `link` nodes to the functions that already existed. The
+inject nodes still work; nothing was moved.
+以前驱动台架要打开 Node-RED 编辑器、点 inject 节点上的小方块。那个编辑器
+同时也能删节点、把流程搞坏, 不该交给跑测试的人。现在 `/ui` 上四个
+`ui_button` —— Start / 6 A / Stop / Run test —— 通过 link 节点接回已有的
+function 做同样的事。inject 节点仍然可用, 什么都没有搬走。
+
+`SetChargingProfile` reads `msg.limit`, but a `ui_button` sends
+`msg.payload`, so the 6 A button would have silently curtailed to the 16 A
+default. The function falls back to `msg.payload`, which keeps both entry
+points working without a `change` node in between.
+`SetChargingProfile` 读的是 `msg.limit`, 而 `ui_button` 发的是 `msg.payload`,
+所以 6 A 按钮本来会静默地限到默认的 16 A。让该函数回退到 `msg.payload`,
+两个入口就都能用, 中间也不需要插一个 `change` 节点。
+
+### One-button test with assertions / 带断言的一键测试
+
+`run scenario` sends RemoteStart, waits, curtails to 6 A, waits, sends
+RemoteStop, and checks the delivered current at each step. It reports PASS
+or FAIL per step on the dashboard and colours its own node status in the
+editor.
+`run scenario` 依次发出启动、等待、限流到 6 A、等待、停止, 并在每一步检查
+实际输出的电流。它在仪表盘上逐条报告 PASS / FAIL, 并给编辑器里自己的节点
+状态着色。
+
+A command is not a result. Node-RED wires are one-way deliveries with no
+return value, so `run scenario` cannot know whether RemoteStart worked. The
+only way to find out is to observe what the station reports back — which is
+exactly what makes this a test rather than a macro.
+**指令不等于结果。** Node-RED 的连线是单向投递、没有返回值, 所以
+`run scenario` 无从知道 RemoteStart 是否成功。唯一的办法是观察桩上报了什么
+—— 这正是它算"测试"而不是"宏"的原因。
+
+Each assertion sits 15 s behind its command. The station has to receive it,
+apply it, and reach its next 5 s metering tick before the change is
+observable; asserting immediately would always fail.
+每条断言都落后它的指令 15 秒。桩要收到、执行、并等到下一个 5 秒计量周期,
+变化才观察得到; 紧跟着断言必然失败。
+
+`setTimeout` outlives the node, so the pending timers are collected and
+cleared in **On Stop**. A redeploy mid-run would otherwise leave them firing
+into a node that no longer exists.
+`setTimeout` 的寿命长于节点, 所以待触发的定时器被收集起来, 在 **On Stop**
+里清掉。否则测试跑到一半重新 Deploy, 它们会向一个已经不存在的节点发消息。
+
+### What the test caught on its first run / 测试第一次跑就抓到的东西
+
+`FAIL  stopped  expected=0 got=6`
+
+Stopping a transaction stops MeterValues, so `flow.lastCurrent` kept the
+last reading it ever saw. The gauge showed 0 because `split to widgets`
+zeroes it for display — but that zeroing lived in the presentation layer,
+not where the state is derived. The dashboard looked right and the state
+underneath was wrong.
+停止事务之后桩不再发 MeterValues, 于是 `flow.lastCurrent` 一直停在它见过的
+最后一个读数上。仪表盘显示 0, 是因为 `split to widgets` 为了显示把它归了零
+—— 但那段归零逻辑活在**展示层**, 而不是状态派生的地方。界面是对的,
+底下的状态是错的。
+
+Nobody was going to find that by looking. It is the fourth instance of the
+same shape in this flow: the gauge, the power trace, the alarm text, and now
+the state a test reads. Every value that can change needs a path that clears
+it, not just one that sets it.
+光靠看是发现不了的。这已经是同一形状的问题在本流程里第四次出现: 仪表盘、
+功率曲线、告警文字, 现在是测试读的那个状态。**每一个会变化的值, 都需要一条
+把它清掉的路径, 而不只是一条设置它的路径。**
+
+### Known limits / 已知局限
+
+- Fixed delays, not polling. A step that is merely slow fails the same way
+  a broken one does. Waiting until a value changes, with a timeout, would
+  be both faster and more honest.
+  用的是固定延时而不是轮询。一个只是慢了的步骤, 失败方式和真正坏掉的一样。
+  改成"等到值改变、超时为止"会更快也更诚实。
+- `lastCurrent` now means "current current". The name says otherwise and
+  should follow.
+  `lastCurrent` 现在的含义是"当前电流", 名字却在说别的, 该改。
+- A CSMS can never know the actual current, only the last one reported. A
+  station that goes offline mid-charge leaves the backend holding a stale
+  number with no way to tell. Pairing every value with the time it was
+  taken would at least make the staleness visible.
+  后台永远不可能知道真实电流, 只能知道最后一次上报的值。桩在充电途中掉线,
+  后台手里就是一个陈旧的数字, 而且无从判断。给每个值配上"采样时刻"至少能
+  让陈旧变得可见。
 
 ---
 

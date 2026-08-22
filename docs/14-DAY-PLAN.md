@@ -63,9 +63,9 @@ only reading produces nothing you can show.
 
 ### Day 7 · Test bench / 测试台架
 
-- [ ] Alarm path: `Faulted` or `CALLERROR` → red indicator + alarm log.
-- [ ] One-button scenario: start → wait → curtail → wait → stop, with assertions.
-- [ ] Write project 02's README section on what you added.
+- [X] Alarm path: `Faulted` or `CALLERROR` → red indicator + alarm log.
+- [X] One-button scenario: start → wait → curtail → wait → stop, with assertions.
+- [X] Write project 02's README section on what you added.
 
 - **Commit:** the scenario flow.
 
