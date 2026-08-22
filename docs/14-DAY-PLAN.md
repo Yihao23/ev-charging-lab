@@ -43,14 +43,14 @@ only reading produces nothing you can show.
 
 - [X] `docker compose up -d` (SteVe), register `CP_1`, connect to it.
 - [X] `RemoteStartTransaction` from SteVe's web UI.
-- [ ] `charge_point.py` TODO 4 — offline queueing. Kill the CSMS mid-transaction.
+- [X] `charge_point.py` TODO 4 — offline queueing. Kill the CSMS mid-transaction.
 
 - **Commit:** a screenshot of SteVe showing your transaction.
 
 ### Day 5 · Node-RED flow / Node-RED 流程
 
-- [ ] Import `flows.json`, connect the station, click every inject button.
-- [ ] Read `decode OCPP-J frame` line by line.
+- [X] Import `flows.json`, connect the station, click every inject button.
+- [X] Read `decode OCPP-J frame` line by line.
 
 - **Commit:** a modified flow — add one node of your own.
 
