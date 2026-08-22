@@ -57,7 +57,7 @@ only reading produces nothing you can show.
 ### Day 6 · Dashboard / 仪表盘
 
 - [X] Install `node-red-dashboard`, import `flows-dashboard.json`, wire the links.
-- [ ] Finish the `ui_button` TODO so the dashboard replaces the inject nodes.
+- [X] Finish the `ui_button` TODO so the dashboard replaces the inject nodes.
 
 - **Commit:** 📸 `screenshots/dashboard.png`.
 
