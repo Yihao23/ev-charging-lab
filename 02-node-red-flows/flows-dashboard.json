@@ -213,5 +213,128 @@
         "x": 320,
         "y": 400,
         "wires": []
+    },
+    {
+        "id": "4de261870157c43d",
+        "type": "ui_button",
+        "z": "flow-ocpp-dashboard",
+        "name": "",
+        "group": "ui-grp-ops",
+        "order": 1,
+        "width": 0,
+        "height": 0,
+        "passthru": false,
+        "label": "Start",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "",
+        "className": "",
+        "icon": "",
+        "payload": "",
+        "payloadType": "str",
+        "topic": "topic",
+        "topicType": "msg",
+        "x": 230,
+        "y": 460,
+        "wires": [
+            [
+                "12c4278dcaf3297e"
+            ]
+        ]
+    },
+    {
+        "id": "115a1aadccdcaf80",
+        "type": "ui_button",
+        "z": "flow-ocpp-dashboard",
+        "name": "",
+        "group": "ui-grp-ops",
+        "order": 2,
+        "width": 0,
+        "height": 0,
+        "passthru": false,
+        "label": "6 A",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "",
+        "className": "",
+        "icon": "",
+        "payload": "6",
+        "payloadType": "num",
+        "topic": "topic",
+        "topicType": "msg",
+        "x": 250,
+        "y": 540,
+        "wires": [
+            [
+                "91f4e61683c243f9"
+            ]
+        ]
+    },
+    {
+        "id": "db930ea8b58708c6",
+        "type": "ui_button",
+        "z": "flow-ocpp-dashboard",
+        "name": "",
+        "group": "ui-grp-ops",
+        "order": 3,
+        "width": 0,
+        "height": 0,
+        "passthru": false,
+        "label": "Stop",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "",
+        "className": "",
+        "icon": "",
+        "payload": "",
+        "payloadType": "str",
+        "topic": "topic",
+        "topicType": "msg",
+        "x": 250,
+        "y": 620,
+        "wires": [
+            [
+                "22baa9b55431510f"
+            ]
+        ]
+    },
+    {
+        "id": "12c4278dcaf3297e",
+        "type": "link out",
+        "z": "flow-ocpp-dashboard",
+        "name": "RemoteStart",
+        "mode": "link",
+        "links": [
+            "7208d6fe6290af0a"
+        ],
+        "x": 415,
+        "y": 460,
+        "wires": []
+    },
+    {
+        "id": "91f4e61683c243f9",
+        "type": "link out",
+        "z": "flow-ocpp-dashboard",
+        "name": "SetProfile",
+        "mode": "link",
+        "links": [
+            "a4e3c668f2875f36"
+        ],
+        "x": 415,
+        "y": 540,
+        "wires": []
+    },
+    {
+        "id": "22baa9b55431510f",
+        "type": "link out",
+        "z": "flow-ocpp-dashboard",
+        "name": "RemoteStop",
+        "mode": "link",
+        "links": [
+            "de0d5d01fc4059b2"
+        ],
+        "x": 415,
+        "y": 620,
+        "wires": []
     }
 ]

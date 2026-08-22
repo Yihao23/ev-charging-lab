@@ -7,6 +7,12 @@
         "info": "Mock OCPP 1.6-J CSMS built from core nodes only.\n只用核心节点搭建的 OCPP 1.6-J 模拟后台。\n\nConnect a station to ws://localhost:1880/ocpp/CP_1\n把充电桩接到 ws://localhost:1880/ocpp/CP_1"
     },
     {
+        "id": "ws-listener-ocpp",
+        "type": "websocket-listener",
+        "path": "/ocpp/CP_1",
+        "wholemsg": "false"
+    },
+    {
         "id": "cmt-1",
         "type": "comment",
         "z": "flow-ocpp-mock-csms",
@@ -144,7 +150,9 @@
         "z": "flow-ocpp-mock-csms",
         "name": "telemetry ->",
         "mode": "link",
-        "links": [],
+        "links": [
+            "lnk-in-telemetry"
+        ],
         "x": 795,
         "y": 260,
         "wires": []
@@ -327,8 +335,9 @@
         "type": "function",
         "z": "flow-ocpp-mock-csms",
         "name": "SetChargingProfile",
-        "func": "// The message this whole lab is about: curtail the station.\n// 整个实验室的核心消息: 对充电桩限功率。\n//\n// msg.limit lets one inject node serve several buttons.\n// msg.limit 让一个 function 节点服务多个按钮。\nconst limit = (msg.limit !== undefined) ? Number(msg.limit) : 16;\n\nconst uid = \"op-\" + ((flow.get(\"opSeq\") || 0) + 1);\nflow.set(\"opSeq\", (flow.get(\"opSeq\") || 0) + 1);\n\nconst pending = flow.get(\"pending\") || {};\npending[uid] = \"SetChargingProfile\";\nflow.set(\"pending\", pending);\n\nmsg.payload = JSON.stringify([2, uid, \"SetChargingProfile\", {\n    connectorId: 1,\n    csChargingProfiles: {\n        chargingProfileId: 200,\n        stackLevel: 2,\n        chargingProfilePurpose: \"TxProfile\",\n        chargingProfileKind: \"Relative\",\n        chargingSchedule: {\n            chargingRateUnit: \"A\",\n            chargingSchedulePeriod: [{ startPeriod: 0, limit: limit }]\n        }\n    }\n}]);\n\nnode.status({ fill: \"blue\", shape: \"ring\", text: \"sent \" + limit + \" A\" });\nreturn msg;",
+        "func": "// The message this whole lab is about: curtail the station.\n// 整个实验室的核心消息: 对充电桩限功率。\n//\n// msg.limit lets one inject node serve several buttons.\n// msg.limit 让一个 function 节点服务多个按钮。\nconst limit = (msg.limit !== undefined) ? Number(msg.limit)\n              : (msg.payload !== undefined && msg.payload !== \"\") ? Number(msg.payload)\n              : 16;\n\nconst uid = \"op-\" + ((flow.get(\"opSeq\") || 0) + 1);\nflow.set(\"opSeq\", (flow.get(\"opSeq\") || 0) + 1);\n\nconst pending = flow.get(\"pending\") || {};\npending[uid] = \"SetChargingProfile\";\nflow.set(\"pending\", pending);\n\nmsg.payload = JSON.stringify([2, uid, \"SetChargingProfile\", {\n    connectorId: 1,\n    csChargingProfiles: {\n        chargingProfileId: 200,\n        stackLevel: 2,\n        chargingProfilePurpose: \"TxProfile\",\n        chargingProfileKind: \"Relative\",\n        chargingSchedule: {\n            chargingRateUnit: \"A\",\n            chargingSchedulePeriod: [{ startPeriod: 0, limit: limit }]\n        }\n    }\n}]);\n\nnode.status({ fill: \"blue\", shape: \"ring\", text: \"sent \" + limit + \" A\" });\nreturn msg;",
         "outputs": 1,
+        "timeout": "",
         "noerr": 0,
         "initialize": "",
         "finalize": "",
@@ -432,9 +441,51 @@
         ]
     },
     {
-        "id": "ws-listener-ocpp",
-        "type": "websocket-listener",
-        "path": "/ocpp/CP_1",
-        "wholemsg": "false"
+        "id": "7208d6fe6290af0a",
+        "type": "link in",
+        "z": "flow-ocpp-mock-csms",
+        "name": "link in 1",
+        "links": [
+            "12c4278dcaf3297e"
+        ],
+        "x": 505,
+        "y": 340,
+        "wires": [
+            [
+                "fn-remote-start"
+            ]
+        ]
+    },
+    {
+        "id": "a4e3c668f2875f36",
+        "type": "link in",
+        "z": "flow-ocpp-mock-csms",
+        "name": "link in 2",
+        "links": [
+            "91f4e61683c243f9"
+        ],
+        "x": 355,
+        "y": 500,
+        "wires": [
+            [
+                "fn-set-profile"
+            ]
+        ]
+    },
+    {
+        "id": "de0d5d01fc4059b2",
+        "type": "link in",
+        "z": "flow-ocpp-mock-csms",
+        "name": "link in 3",
+        "links": [
+            "22baa9b55431510f"
+        ],
+        "x": 345,
+        "y": 420,
+        "wires": [
+            [
+                "fn-remote-stop"
+            ]
+        ]
     }
 ]
