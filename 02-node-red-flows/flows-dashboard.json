@@ -4,23 +4,7 @@
         "type": "tab",
         "label": "OCPP dashboard",
         "disabled": false,
-        "info": "REQUIRES node-red-dashboard:  npm install node-red-dashboard\n需要 node-red-dashboard:  npm install node-red-dashboard\n\nOpen http://localhost:1880/ui after importing.\n导入后打开 http://localhost:1880/ui"
-    },
-    {
-        "id": "ui-base",
-        "type": "ui_base",
-        "theme": {
-            "name": "theme-dark",
-            "darkTheme": {
-                "default": true
-            }
-        },
-        "site": {
-            "name": "EV Charging Lab",
-            "hideToolbar": "false",
-            "allowSwipe": "false",
-            "dateFormat": "HH:mm:ss"
-        }
+        "info": "REQUIRES node-red-dashboard:  npm install node-red-dashboard\n需要 node-red-dashboard:  npm install node-red-dashboard\n\nOpen http://localhost:1880/ui after importing.\n导入后打开 http://localhost:1880/ui\n\nNo ui_base node here on purpose: the dashboard creates its own with a\nvalid theme the first time /ui is opened. A hand-written one ends up\nnested under theme.name and the page renders blank.\n这里刻意不放 ui_base: 首次打开 /ui 时 dashboard 会自己建一个主题合法的。\n手写的那个会被嵌套进 theme.name, 导致页面一片空白。"
     },
     {
         "id": "ui-tab-1",
@@ -76,7 +60,9 @@
         "type": "link in",
         "z": "flow-ocpp-dashboard",
         "name": "telemetry <-",
-        "links": [],
+        "links": [
+            "lnk-out-telemetry"
+        ],
         "x": 115,
         "y": 140,
         "wires": [
@@ -90,8 +76,9 @@
         "type": "function",
         "z": "flow-ocpp-dashboard",
         "name": "split to widgets",
-        "func": "// One telemetry record fans out to the dashboard widgets.\n// 一条遥测记录扇出到各个仪表盘控件。\n// Output order / 输出顺序: 1 status  2 current  3 power  4 transaction\nconst r = msg.payload;\n\nconst status  = { payload: r.status };\nconst current = (r.current_a === null) ? null : { payload: r.current_a };\nconst power   = (r.power_w  === null) ? null : { payload: r.power_w, topic: \"Power (W)\" };\nconst tx      = { payload: r.tx ? (\"tx \" + r.tx) : \"idle\" };\n\nreturn [status, current, power, tx];",
+        "func": "// One telemetry record fans out to the dashboard widgets.\n// 一条遥测记录扇出到各个仪表盘控件。\n// Output order / 输出顺序: 1 status  2 current  3 power  4 transaction\nconst r = msg.payload;\n\nconst status  = { payload: r.status };\nconst charging = r.status === \"Charging\";\nconst current = (r.current_a !== null) ? { payload: r.current_a }\n    : (charging ? null : { payload: 0 });\nconst power = (r.power_w !== null) ? { payload: r.power_w, topic: \"Power (W)\" }\n    : (charging ? null : { payload: 0, topic: \"Power (W)\" });\nconst tx      = { payload: r.tx ? (\"tx \" + r.tx) : \"idle\" };\n\nreturn [status, current, power, tx];",
         "outputs": 4,
+        "timeout": "",
         "noerr": 0,
         "initialize": "",
         "finalize": "",
@@ -149,6 +136,7 @@
         "id": "ui-current",
         "type": "ui_gauge",
         "z": "flow-ocpp-dashboard",
+        "name": "",
         "group": "ui-grp-power",
         "order": 1,
         "width": 4,
@@ -164,8 +152,10 @@
             "#e6e600",
             "#ca3838"
         ],
-        "seg1": "16",
-        "seg2": "26",
+        "seg1": "32",
+        "seg2": "32",
+        "diff": false,
+        "className": "",
         "x": 550,
         "y": 140,
         "wires": []
@@ -174,6 +164,7 @@
         "id": "ui-power",
         "type": "ui_chart",
         "z": "flow-ocpp-dashboard",
+        "name": "",
         "group": "ui-grp-power",
         "order": 2,
         "width": 8,
@@ -184,18 +175,29 @@
         "xformat": "HH:mm:ss",
         "interpolate": "step",
         "nodata": "waiting for MeterValues",
+        "dot": false,
         "ymin": "0",
         "ymax": "",
-        "removeOlder": 1,
+        "removeOlder": "5",
         "removeOlderPoints": "",
-        "removeOlderUnit": "3600",
+        "removeOlderUnit": "60",
         "cutout": 0,
         "useOneColor": false,
         "useUTC": false,
         "colors": [
-            "#1f9bcf"
+            "#1f9bcf",
+            "#000000",
+            "#000000",
+            "#000000",
+            "#000000",
+            "#000000",
+            "#000000",
+            "#000000",
+            "#000000"
         ],
         "outputs": 1,
+        "useDifferentColor": false,
+        "className": "",
         "x": 550,
         "y": 200,
         "wires": [
