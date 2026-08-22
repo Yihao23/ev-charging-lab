@@ -4,46 +4,7 @@
         "type": "tab",
         "label": "OCPP dashboard",
         "disabled": false,
-        "info": "REQUIRES node-red-dashboard:  npm install node-red-dashboard\n需要 node-red-dashboard:  npm install node-red-dashboard\n\nOpen http://localhost:1880/ui after importing.\n导入后打开 http://localhost:1880/ui\n\nNo ui_base node here on purpose: the dashboard creates its own with a\nvalid theme the first time /ui is opened. A hand-written one ends up\nnested under theme.name and the page renders blank.\n这里刻意不放 ui_base: 首次打开 /ui 时 dashboard 会自己建一个主题合法的。\n手写的那个会被嵌套进 theme.name, 导致页面一片空白。"
-    },
-    {
-        "id": "ui-tab-1",
-        "type": "ui_tab",
-        "name": "Charging session",
-        "icon": "ev-station",
-        "order": 1,
-        "disabled": false,
-        "hidden": false
-    },
-    {
-        "id": "ui-grp-state",
-        "type": "ui_group",
-        "name": "Connector",
-        "tab": "ui-tab-1",
-        "order": 1,
-        "disp": true,
-        "width": 6,
-        "collapse": false
-    },
-    {
-        "id": "ui-grp-power",
-        "type": "ui_group",
-        "name": "Power",
-        "tab": "ui-tab-1",
-        "order": 2,
-        "disp": true,
-        "width": 12,
-        "collapse": false
-    },
-    {
-        "id": "ui-grp-ops",
-        "type": "ui_group",
-        "name": "Operator",
-        "tab": "ui-tab-1",
-        "order": 3,
-        "disp": true,
-        "width": 6,
-        "collapse": false
+        "info": "REQUIRES node-red-dashboard:  npm install node-red-dashboard\n需要 node-red-dashboard:  npm install node-red-dashboard\n\nOpen http://localhost:1880/ui after importing.\n导入后打开 http://localhost:1880/ui"
     },
     {
         "id": "cmt-dash",
@@ -336,5 +297,167 @@
         "x": 415,
         "y": 620,
         "wires": []
+    },
+    {
+        "id": "4d128b13de34620b",
+        "type": "ui_text",
+        "z": "flow-ocpp-dashboard",
+        "group": "ui-grp-state",
+        "order": 2,
+        "width": 0,
+        "height": 0,
+        "name": "",
+        "label": "Alarm",
+        "format": "{{msg.payload}}",
+        "layout": "row-spread",
+        "className": "",
+        "style": false,
+        "font": "",
+        "fontSize": 16,
+        "color": "#000000",
+        "x": 370,
+        "y": 700,
+        "wires": []
+    },
+    {
+        "id": "6dd05f3d9897d002",
+        "type": "link in",
+        "z": "flow-ocpp-dashboard",
+        "name": "Alarm",
+        "links": [
+            "4d8c59b7734adc24"
+        ],
+        "x": 195,
+        "y": 720,
+        "wires": [
+            [
+                "4d128b13de34620b"
+            ]
+        ]
+    },
+    {
+        "id": "02fc033d5b21f978",
+        "type": "ui_button",
+        "z": "flow-ocpp-dashboard",
+        "name": "",
+        "group": "ui-grp-ops",
+        "order": 3,
+        "width": 0,
+        "height": 0,
+        "passthru": false,
+        "label": "Run test",
+        "tooltip": "",
+        "color": "",
+        "bgcolor": "",
+        "className": "",
+        "icon": "",
+        "payload": "",
+        "payloadType": "str",
+        "topic": "topic",
+        "topicType": "msg",
+        "x": 740,
+        "y": 640,
+        "wires": [
+            [
+                "b4de56249cd2480d"
+            ]
+        ]
+    },
+    {
+        "id": "7637384b6b14f906",
+        "type": "link in",
+        "z": "flow-ocpp-dashboard",
+        "name": "Result<-",
+        "links": [
+            "59e401da9f3d067d"
+        ],
+        "x": 685,
+        "y": 740,
+        "wires": [
+            [
+                "d8e3679d2389df0c"
+            ]
+        ]
+    },
+    {
+        "id": "d8e3679d2389df0c",
+        "type": "ui_text",
+        "z": "flow-ocpp-dashboard",
+        "group": "ui-grp-ops",
+        "order": 4,
+        "width": 0,
+        "height": 0,
+        "name": "",
+        "label": "Test Result",
+        "format": "<pre style=\"font-size:11px\">{{msg.payload}}</pre>",
+        "layout": "row-spread",
+        "className": "",
+        "style": false,
+        "font": "",
+        "fontSize": 16,
+        "color": "#000000",
+        "x": 890,
+        "y": 740,
+        "wires": []
+    },
+    {
+        "id": "b4de56249cd2480d",
+        "type": "link out",
+        "z": "flow-ocpp-dashboard",
+        "name": "Scenario->",
+        "mode": "link",
+        "links": [
+            "4db9cf770b06c48b"
+        ],
+        "x": 945,
+        "y": 640,
+        "wires": []
+    },
+    {
+        "id": "ui-grp-state",
+        "type": "ui_group",
+        "name": "Connector",
+        "tab": "ui-tab-1",
+        "order": 1,
+        "disp": true,
+        "width": 6,
+        "collapse": false
+    },
+    {
+        "id": "ui-grp-power",
+        "type": "ui_group",
+        "name": "Power",
+        "tab": "ui-tab-1",
+        "order": 2,
+        "disp": true,
+        "width": 12,
+        "collapse": false
+    },
+    {
+        "id": "ui-grp-ops",
+        "type": "ui_group",
+        "name": "Operator",
+        "tab": "ui-tab-1",
+        "order": 3,
+        "disp": true,
+        "width": 6,
+        "collapse": false
+    },
+    {
+        "id": "ui-tab-1",
+        "type": "ui_tab",
+        "name": "Charging session",
+        "icon": "ev-station",
+        "order": 1,
+        "disabled": false,
+        "hidden": false
+    },
+    {
+        "id": "c4426d386dbfb5cf",
+        "type": "global-config",
+        "env": [],
+        "modules": {
+            "node-red-dashboard": "3.6.6"
+        }
     }
 ]

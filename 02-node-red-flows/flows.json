@@ -7,12 +7,6 @@
         "info": "Mock OCPP 1.6-J CSMS built from core nodes only.\n只用核心节点搭建的 OCPP 1.6-J 模拟后台。\n\nConnect a station to ws://localhost:1880/ocpp/CP_1\n把充电桩接到 ws://localhost:1880/ocpp/CP_1"
     },
     {
-        "id": "ws-listener-ocpp",
-        "type": "websocket-listener",
-        "path": "/ocpp/CP_1",
-        "wholemsg": "false"
-    },
-    {
         "id": "cmt-1",
         "type": "comment",
         "z": "flow-ocpp-mock-csms",
@@ -92,7 +86,7 @@
         "type": "function",
         "z": "flow-ocpp-mock-csms",
         "name": "extract telemetry",
-        "func": "// Flatten every frame into one telemetry record.\n// 把每一帧压平成一条遥测记录。\n// This is the shape the dashboard and the JSONL log both consume.\n// 仪表盘和 JSONL 日志消费的都是这个结构。\nconst o = msg.ocpp;\nconst rec = {\n    ts: new Date().toISOString(),\n    type: o.type,\n    uid: o.uid,\n    action: o.action || \"\",\n    status: flow.get(\"connectorStatus\") || \"Unknown\",\n    tx: flow.get(\"activeTx\") || null,\n    power_w: null,\n    current_a: null,\n    energy_wh: null\n};\n\nif (o.action === \"MeterValues\") {\n    const samples = ((o.payload.meterValue || [])[0] || {}).sampledValue || [];\n    samples.forEach(function (s) {\n        const v = parseFloat(s.value);\n        if (s.measurand === \"Power.Active.Import\") { rec.power_w = v; }\n        else if (s.measurand === \"Current.Import\") { rec.current_a = v; }\n        else if (!s.measurand || s.measurand === \"Energy.Active.Import.Register\") { rec.energy_wh = v; }\n    });\n}\n\nif(o.action == \"StatusNotification\"){\n    rec.error_code = o.payload.errorCode || \"NoError\";\n}\nif (o.type === 4) { rec.error = o.errorCode + \": \" + o.errorDescription; }\n\nmsg.payload = rec;\nmsg.topic = rec.action;\nreturn msg;",
+        "func": "// Flatten every frame into one telemetry record.\n// 把每一帧压平成一条遥测记录。\n// This is the shape the dashboard and the JSONL log both consume.\n// 仪表盘和 JSONL 日志消费的都是这个结构。\nconst o = msg.ocpp;\nconst rec = {\n    ts: new Date().toISOString(),\n    type: o.type,\n    uid: o.uid,\n    action: o.action || \"\",\n    status: flow.get(\"connectorStatus\") || \"Unknown\",\n    tx: flow.get(\"activeTx\") || null,\n    power_w: null,\n    current_a: null,\n    energy_wh: null\n};\n\nif (o.action === \"MeterValues\") {\n    const samples = ((o.payload.meterValue || [])[0] || {}).sampledValue || [];\n    samples.forEach(function (s) {\n        const v = parseFloat(s.value);\n        if (s.measurand === \"Power.Active.Import\") { rec.power_w = v; }\n        else if (s.measurand === \"Current.Import\") { rec.current_a = v; }\n        else if (!s.measurand || s.measurand === \"Energy.Active.Import.Register\") { rec.energy_wh = v; }\n    });\n}\n\nif(o.action == \"StatusNotification\"){\n    rec.error_code = o.payload.errorCode || \"NoError\";\n}\nif (o.type === 4) { rec.error = o.errorCode + \": \" + o.errorDescription; }\n\nmsg.payload = rec;\nmsg.topic = rec.action;\n\n\nif (rec.current_a !== null) { flow.set(\"lastCurrent\", rec.current_a); \n  } else if (rec.status !== \"Charging\") {\n    // No reading and not charging: the current really is zero. Without\n    // this the last value sticks, and anything reading the state — the\n    // scenario assertions, not just the gauge — sees a station still\n    // drawing 6 A after it stopped.\n    // 没有读数且不在充电: 电流确实是 0。不写这一句, 最后那个值会一直挂着,\n    // 而读状态的东西——不只是仪表盘, 还有场景断言——会看到一台已经停止\n    // 却还在取 6 A 的桩。\n    flow.set(\"lastCurrent\", 0);\n}\n\nreturn msg;",
         "outputs": 1,
         "timeout": "",
         "noerr": 0,
@@ -199,6 +193,7 @@
         "name": "RemoteStart",
         "func": "// CSMS -> station: start a transaction remotely.\n// 后台 -> 桩: 远程开启事务。\nconst uid = \"op-\" + ((flow.get(\"opSeq\") || 0) + 1);\nflow.set(\"opSeq\", (flow.get(\"opSeq\") || 0) + 1);\n\nconst pending = flow.get(\"pending\") || {};\npending[uid] = \"RemoteStartTransaction\";\nflow.set(\"pending\", pending);\n\nmsg.payload = JSON.stringify([2, uid, \"RemoteStartTransaction\", { idTag: \"DEADBEEF\" }]);\nreturn msg;",
         "outputs": 1,
+        "timeout": "",
         "noerr": 0,
         "initialize": "",
         "finalize": "",
@@ -385,9 +380,12 @@
         "wires": [
             [
                 "8abd7cb7f0054c36",
-                "fbf57894b227a112"
+                "fbf57894b227a112",
+                "dedc03baac05ca07"
             ],
-            []
+            [
+                "babd37a59e65113a"
+            ]
         ]
     },
     {
@@ -487,5 +485,136 @@
                 "fn-remote-stop"
             ]
         ]
+    },
+    {
+        "id": "4d8c59b7734adc24",
+        "type": "link out",
+        "z": "flow-ocpp-mock-csms",
+        "name": "Alarm",
+        "mode": "link",
+        "links": [
+            "6dd05f3d9897d002"
+        ],
+        "x": 1215,
+        "y": 460,
+        "wires": []
+    },
+    {
+        "id": "dedc03baac05ca07",
+        "type": "change",
+        "z": "flow-ocpp-mock-csms",
+        "name": "alarm text",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "\"🚨 \" & $string(payload.error_code)",
+                "tot": "jsonata"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 1060,
+        "y": 460,
+        "wires": [
+            [
+                "4d8c59b7734adc24"
+            ]
+        ]
+    },
+    {
+        "id": "babd37a59e65113a",
+        "type": "change",
+        "z": "flow-ocpp-mock-csms",
+        "name": "clear alarm",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 970,
+        "y": 560,
+        "wires": [
+            [
+                "4d8c59b7734adc24"
+            ]
+        ]
+    },
+    {
+        "id": "a85248facdf8e229",
+        "type": "function",
+        "z": "flow-ocpp-mock-csms",
+        "name": "run scenario",
+        "func": "// ── run scenario · On Message ────────────────────────────────────────\n// One-button bench test: start, assert full power, curtail, assert the\n// curtailment took, stop, assert zero. Outputs:\n//   1 start   2 curtail   3 stop   4 results\n// 一键台架测试: 启动 → 断言满功率 → 限流 → 断言限流生效 → 停止 → 断言归零。\n// 输出口: 1 启动  2 限流  3 停止  4 结果\n\n// Refuse to start a second run on top of a live one: two sequences would\n// interleave their commands and both would report nonsense.\n// 已有一轮在跑时拒绝重入: 两个序列的指令会交错, 两边的结果都是垃圾。\nif (context.get(\"running\")) {\n    node.warn(\"test already running, ignoring\");\n    return null;\n}\ncontext.set(\"running\", true);\n\nconst results = [];\nconst timers = [];\nconst cur = () => flow.get(\"lastCurrent\");\n\nfunction assert(name, want) {\n    const got = cur();\n    const ok = (got === want);\n    results.push(`${ok ? \"PASS\" : \"FAIL\"}  ${name}  expected=${want} got=${got}`);\n    node.status({ fill: ok ? \"green\" : \"red\", shape: \"dot\", text: name });\n}\n\nfunction at(ms, fn) { timers.push(setTimeout(fn, ms)); }\n\nnode.status({ fill: \"blue\", shape: \"ring\", text: \"running...\" });\n\n// t=0 — start charging\nnode.send([{ payload: \"\" }, null, null, null]);\n\n// Assertions sit 15 s behind their command on purpose. The station has to\n// receive it, apply it, and reach its next 5 s metering tick before the\n// change is observable. Asserting immediately would always fail.\n// 断言刻意落后指令 15 秒。桩要收到、执行、并等到下一个 5 秒计量周期，变化才\n// 观察得到。紧跟着断言必然失败。\nat(15000, () => assert(\"charging at full power\", 32));\nat(20000, () => node.send([null, { payload: 6 }, null, null]));\nat(35000, () => assert(\"curtailed to 6 A\", 6));\nat(40000, () => node.send([null, null, { payload: \"\" }, null]));\nat(50000, () => {\n    assert(\"stopped\", 0);\n    const failed = results.filter(r => r.startsWith(\"FAIL\")).length;\n    node.status({\n        fill: failed ? \"red\" : \"green\", shape: \"dot\",\n        text: failed ? `${failed} FAILED` : \"all passed\"\n    });\n    node.send([null, null, null, { payload: results.join(\"\\n\") }]);\n    context.set(\"running\", false);\n});\n\ncontext.set(\"timers\", timers);\nreturn null;",
+        "outputs": 4,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "// ── run scenario · On Stop ───────────────────────────────────────────\n// Timers outlive the node. A redeploy mid-run destroys and rebuilds this\n// node, but any setTimeout still pending fires into the dead one and\n// Node-RED logs \"Function tried to send a message but the node is no\n// longer active\". Same shape as an orphaned asyncio task: background work\n// has to be cancelled with the thing that started it.\n// 定时器的寿命长于节点。测试跑到一半重新 Deploy 会销毁并重建本节点，而尚未\n// 触发的 setTimeout 仍会向那个已死的节点发消息，Node-RED 会报\n// \"the node is no longer active\"。这和游离的 asyncio 任务是同一个形状:\n// 后台工作必须和启动它的东西一起被取消。\n(context.get(\"timers\") || []).forEach(clearTimeout);\ncontext.set(\"timers\", []);\ncontext.set(\"running\", false);",
+        "libs": [],
+        "x": 490,
+        "y": 720,
+        "wires": [
+            [
+                "fn-remote-start"
+            ],
+            [
+                "fn-set-profile"
+            ],
+            [
+                "fn-remote-stop"
+            ],
+            [
+                "59e401da9f3d067d"
+            ]
+        ]
+    },
+    {
+        "id": "59e401da9f3d067d",
+        "type": "link out",
+        "z": "flow-ocpp-mock-csms",
+        "name": "->Result",
+        "mode": "link",
+        "links": [
+            "7637384b6b14f906"
+        ],
+        "x": 695,
+        "y": 800,
+        "wires": []
+    },
+    {
+        "id": "4db9cf770b06c48b",
+        "type": "link in",
+        "z": "flow-ocpp-mock-csms",
+        "name": "Scenario<-",
+        "links": [
+            "b4de56249cd2480d"
+        ],
+        "x": 255,
+        "y": 760,
+        "wires": [
+            [
+                "a85248facdf8e229"
+            ]
+        ]
+    },
+    {
+        "id": "ws-listener-ocpp",
+        "type": "websocket-listener",
+        "path": "/ocpp/CP_1",
+        "wholemsg": "false"
     }
 ]
