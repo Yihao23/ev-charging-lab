@@ -7,12 +7,6 @@
         "info": "Mock OCPP 1.6-J CSMS built from core nodes only.\n只用核心节点搭建的 OCPP 1.6-J 模拟后台。\n\nConnect a station to ws://localhost:1880/ocpp/CP_1\n把充电桩接到 ws://localhost:1880/ocpp/CP_1"
     },
     {
-        "id": "ws-listener-ocpp",
-        "type": "websocket-listener",
-        "path": "/ocpp/CP_1",
-        "wholemsg": "false"
-    },
-    {
         "id": "cmt-1",
         "type": "comment",
         "z": "flow-ocpp-mock-csms",
@@ -92,8 +86,9 @@
         "type": "function",
         "z": "flow-ocpp-mock-csms",
         "name": "extract telemetry",
-        "func": "// Flatten every frame into one telemetry record.\n// 把每一帧压平成一条遥测记录。\n// This is the shape the dashboard and the JSONL log both consume.\n// 仪表盘和 JSONL 日志消费的都是这个结构。\nconst o = msg.ocpp;\nconst rec = {\n    ts: new Date().toISOString(),\n    type: o.type,\n    uid: o.uid,\n    action: o.action || \"\",\n    status: flow.get(\"connectorStatus\") || \"Unknown\",\n    tx: flow.get(\"activeTx\") || null,\n    power_w: null,\n    current_a: null,\n    energy_wh: null\n};\n\nif (o.action === \"MeterValues\") {\n    const samples = ((o.payload.meterValue || [])[0] || {}).sampledValue || [];\n    samples.forEach(function (s) {\n        const v = parseFloat(s.value);\n        if (s.measurand === \"Power.Active.Import\") { rec.power_w = v; }\n        else if (s.measurand === \"Current.Import\") { rec.current_a = v; }\n        else if (!s.measurand || s.measurand === \"Energy.Active.Import.Register\") { rec.energy_wh = v; }\n    });\n}\n\nif (o.type === 4) { rec.error = o.errorCode + \": \" + o.errorDescription; }\n\nmsg.payload = rec;\nmsg.topic = rec.action;\nreturn msg;",
+        "func": "// Flatten every frame into one telemetry record.\n// 把每一帧压平成一条遥测记录。\n// This is the shape the dashboard and the JSONL log both consume.\n// 仪表盘和 JSONL 日志消费的都是这个结构。\nconst o = msg.ocpp;\nconst rec = {\n    ts: new Date().toISOString(),\n    type: o.type,\n    uid: o.uid,\n    action: o.action || \"\",\n    status: flow.get(\"connectorStatus\") || \"Unknown\",\n    tx: flow.get(\"activeTx\") || null,\n    power_w: null,\n    current_a: null,\n    energy_wh: null\n};\n\nif (o.action === \"MeterValues\") {\n    const samples = ((o.payload.meterValue || [])[0] || {}).sampledValue || [];\n    samples.forEach(function (s) {\n        const v = parseFloat(s.value);\n        if (s.measurand === \"Power.Active.Import\") { rec.power_w = v; }\n        else if (s.measurand === \"Current.Import\") { rec.current_a = v; }\n        else if (!s.measurand || s.measurand === \"Energy.Active.Import.Register\") { rec.energy_wh = v; }\n    });\n}\n\nif(o.action == \"StatusNotification\"){\n    rec.error_code = o.payload.errorCode || \"NoError\";\n}\nif (o.type === 4) { rec.error = o.errorCode + \": \" + o.errorDescription; }\n\nmsg.payload = rec;\nmsg.topic = rec.action;\nreturn msg;",
         "outputs": 1,
+        "timeout": "",
         "noerr": 0,
         "initialize": "",
         "finalize": "",
@@ -104,7 +99,8 @@
             [
                 "dbg-telemetry",
                 "file-jsonl",
-                "lnk-out-telemetry"
+                "lnk-out-telemetry",
+                "31721455b0ad77a6"
             ]
         ]
     },
@@ -354,5 +350,91 @@
         "x": 300,
         "y": 260,
         "wires": []
+    },
+    {
+        "id": "31721455b0ad77a6",
+        "type": "switch",
+        "z": "flow-ocpp-mock-csms",
+        "name": "Faulted?",
+        "property": "payload.status",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "Faulted",
+                "vt": "str"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 800,
+        "y": 360,
+        "wires": [
+            [
+                "8abd7cb7f0054c36",
+                "fbf57894b227a112"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "8abd7cb7f0054c36",
+        "type": "debug",
+        "z": "flow-ocpp-mock-csms",
+        "name": "ALARM",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "payload",
+        "statusType": "auto",
+        "x": 1060,
+        "y": 300,
+        "wires": []
+    },
+    {
+        "id": "e65f5aeafe534b60",
+        "type": "file",
+        "z": "flow-ocpp-mock-csms",
+        "name": "",
+        "filename": "/tmp/alarms.jsonl",
+        "filenameType": "str",
+        "appendNewline": true,
+        "createDir": true,
+        "overwriteFile": "false",
+        "encoding": "none",
+        "x": 1170,
+        "y": 360,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "fbf57894b227a112",
+        "type": "json",
+        "z": "flow-ocpp-mock-csms",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 990,
+        "y": 360,
+        "wires": [
+            [
+                "e65f5aeafe534b60"
+            ]
+        ]
+    },
+    {
+        "id": "ws-listener-ocpp",
+        "type": "websocket-listener",
+        "path": "/ocpp/CP_1",
+        "wholemsg": "false"
     }
 ]
