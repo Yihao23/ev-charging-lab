@@ -163,11 +163,18 @@ closed by `RemoteStartTransaction` / `RemoteStopTransaction`.
 | [`steve-connected.png`](01-ocpp-charge-point/screenshots/steve-connected.png) | The OCPP 1.6-J WebSocket session, live | 实时的 OCPP 1.6-J 连接 |
 | [`steve-connector-status.png`](01-ocpp-charge-point/screenshots/steve-connector-status.png) | Connector back to `Available` after the stop | 停止后接口回到 Available |
 
+![The Node-RED dashboard mid-session](02-node-red-flows/screenshots/dashboard.png)
+
+The same station seen through a Node-RED bench dashboard. The notch in the
+power trace is the backend curtailing the station and releasing it again —
+`SetChargingProfile` arriving, the station obeying, and recovering.
+同一台桩在 Node-RED 台架仪表盘里的样子。功率曲线上的凹槽就是后台限功率再放开 ——
+`SetChargingProfile` 到达、桩照做、然后恢复。
+
 Still to come / 还没有的:
 
 | | |
 |---|---|
-| `02-node-red-flows/screenshots/dashboard.png` | Live charging dashboard |
 | `02-node-red-flows/screenshots/flow.png` | The mock CSMS flow |
 | `03-iso15118-analysis/captures/wireshark.png` | A V2G session in Wireshark |
 | `04-v2g-log-analyzer/samples/report-example.md` | ✅ already generated |
