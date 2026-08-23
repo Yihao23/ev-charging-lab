@@ -68,11 +68,17 @@ And one that most candidates get wrong / 还有一个大多数候选人会搞错
 ## Step by step / 分步推进
 
 ### Day 8 — get a session to complete / 让一次会话跑完
-- [ ] Clone [EcoG-io/iso15118](https://github.com/EcoG-io/iso15118), read its README.
-- [ ] Create the `veth` pair (`setup/run-secc-evcc.md`).
-- [ ] Start SECC, start EVCC, get to `SessionStop` without errors.
-      跑到 `SessionStop` 且无错误。
-- [ ] Save the full log to `captures/session-01.log`.
+- [x] Clone [EcoG-io/iso15118](https://github.com/EcoG-io/iso15118), read its README.
+- [x] ~~Create the `veth` pair~~ — the repo ships a Docker path instead:
+      `make build && make dev`. Two fixes were needed first, both recorded in
+      [`setup/run-secc-evcc.md`](setup/run-secc-evcc.md).
+      仓库自带 Docker 路径，比 `veth` 简单；但需要先打两个补丁。
+- [x] Start SECC, start EVCC, get to `SessionStop` without errors.
+      跑到 `SessionStop` 且无错误 —— 19 个请求，0 个错误。
+- [x] Note which protocol was negotiated: **ISO 15118-2**, `AC_three_phase_core`.
+      协商结果: **ISO 15118-2**，交流三相。
+- [x] Save the full log to `captures/session-01-secc.log` and `-evcc.log`.
+- [x] Write it up: 📄 [`report/REPORT-01.md`](report/REPORT-01.md).
 
 ### Day 9 — see the bytes / 看见字节
 - [ ] `tcpdump` the interface, open the pcap in Wireshark.

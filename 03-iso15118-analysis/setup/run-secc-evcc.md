@@ -10,20 +10,82 @@ interface instead of a PLC modem.
 ## Option A — EcoG-io/iso15118 (Python, recommended to start)
 ## 方案 A —— EcoG-io/iso15118 (Python，推荐入门)
 
+**This is the one that produced [`session-01`](../captures/).** The repo ships a
+Docker path that is simpler than the `veth` setup below — use it first.
+**`session-01` 就是这么跑出来的。** 仓库自带的 Docker 路径比下面的 `veth` 方案简单，先用它。
+
 ```bash
+cd ~/codespace                     # a sibling of this repo, NOT inside it
 git clone https://github.com/EcoG-io/iso15118.git
 cd iso15118
-cat README.md          # follow ITS instructions — they change | 按它自己的说明来，会变
+make build                         # generates the PKI, then builds both images
+make dev                           # brings up secc + evcc + redis
 ```
 
-Two things the README will make you decide / README 会让你做的两个决定:
+Clone it **outside** `ev-charging-lab` — it is its own git repo, and `.gitignore`
+here has no rule for it. Only the logs it produces belong in this repo.
+克隆到 `ev-charging-lab` **外面** —— 它本身是个 git 仓库，这里的 `.gitignore` 也没有
+针对它的规则。只有它产出的日志才属于本仓库。
 
-| Decision | What to pick for a lab | 实验室里怎么选 |
-|---|---|---|
-| Network interface | a virtual pair, not a real NIC | 用虚拟网卡对，不要真网卡 |
-| Protocol | start with `ISO_15118_2`, add `-20` later | 先 `ISO_15118_2`，之后再上 `-20` |
+### Two fixes needed as of 2026-08 / 2026-08 时需要的两处修补
 
-Create the virtual interface pair / 创建虚拟网卡对 (Linux):
+**1. `docker-compose: command not found`** — the `Makefile` calls the retired
+standalone binary; modern Docker ships compose as a subcommand. A shim on
+`PATH` fixes it for every old project, not just this one:
+`Makefile` 调的是已淘汰的独立二进制，新版 Docker 把 compose 做成了子命令。
+在 `PATH` 上放个转发脚本，一次解决所有老项目:
+
+```bash
+printf '#!/bin/sh\nexec docker compose "$@"\n' > ~/.local/bin/docker-compose
+chmod +x ~/.local/bin/docker-compose
+```
+
+**2. `apt update` → `404 Not Found` on `deb.debian.org/debian buster`** — the
+base image is `python:3.10.0-buster`, and Debian buster is EOL: its repos moved
+to `archive.debian.org`, so `apt install default-jre` fails with exit code 100.
+Bump the base image in **`template.Dockerfile`** (both stages) — the `Makefile`
+regenerates `iso15118/{secc,evcc}/Dockerfile` from it on every build, so editing
+the generated files is pointless:
+基础镜像是 `python:3.10.0-buster`，而 buster 已 EOL，源被移到了 `archive.debian.org`，
+所以 `apt install default-jre` 以 exit code 100 失败。改 **`template.Dockerfile`**
+的两处 `FROM` —— `Makefile` 每次构建都从它重新生成那两个 Dockerfile，改生成物没用:
+
+```bash
+sed -i 's/python:3\.10\.0-buster/python:3.10-bullseye/g' template.Dockerfile
+```
+
+> Why a JRE is needed at all: the EXI codec is `iso15118/shared/EXICodec.jar`
+> (EXIficient), driven from Python over py4j. Real charge points use a C codec
+> — OpenV2G or libcbv2g — because embedded hardware has no JVM.
+> 为什么需要 JRE: EXI 编解码器是 `iso15118/shared/EXICodec.jar`(EXIficient)，
+> Python 通过 py4j 调它。真桩用的是 C 实现(OpenV2G / libcbv2g)，嵌入式硬件没有 JVM。
+
+### What a good run looks like / 跑成功是什么样
+
+```
+UDP server started at address FF02::1%eth0 and port 15118    ← SDP listener
+SDPRequest received: [Security: NO_TLS, Protocol: TCP]
+TCP server started at address fe80::…%eth0 and port 50933    ← ephemeral, announced via SDP
+Entered state SupportedAppProtocol
+…
+Sent SessionStopRes
+Session ended in SessionStop (EV requested to terminate the communication session).
+```
+
+`docker logs iso15118-secc-1 > ../captures/session-01-secc.log` to keep it.
+
+⚠️ **Docker containers talk over plain Ethernet, so there is no SLAC and no
+HomePlug GreenPHY layer here.** This validates layer 2 upwards only; the PLC
+pairing that a real station does is not exercised.
+⚠️ **容器之间走的是普通以太网，所以这里没有 SLAC，也没有 HomePlug GreenPHY 层。**
+这只验证了第 2 层往上；真桩要做的 PLC 配对没有被覆盖。
+
+### Alternative — a `veth` pair on the host / 备选: 宿主机上的 veth 对
+
+Only needed if you want the two ends outside Docker (e.g. to `tcpdump` on the
+host without entering a container namespace).
+只有当你想让两端都跑在 Docker 外面时才需要(比如想在宿主机上直接 `tcpdump`，
+不用进容器的网络命名空间)。
 
 ```bash
 sudo ip link add veth-evcc type veth peer name veth-secc
@@ -34,14 +96,10 @@ sudo ip link set veth-secc up
 ip -6 addr show veth-evcc
 ```
 
-Then run the SECC on one interface and the EVCC on the other.
-然后在一个接口上跑 SECC，另一个上跑 EVCC。
-
 > If IPv6 link-local addresses do not appear, `sysctl net.ipv6.conf.all.disable_ipv6`
 > is probably `1`. This is the single most common reason a V2G lab does not start.
 > 如果没出现 IPv6 链路本地地址，多半是 `net.ipv6.conf.all.disable_ipv6=1`。
 > 这是 V2G 实验环境起不来的头号原因。
-
 ---
 
 ## Option B — EVerest (C++, the industrial one)

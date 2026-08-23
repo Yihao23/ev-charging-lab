@@ -123,7 +123,7 @@ Full breakdown: [`docs/14-DAY-PLAN.md`](docs/14-DAY-PLAN.md)
 - [ ] Day 5 — Node-RED flow imported, station driven from it
 - [ ] Day 6 — dashboard live at `/ui`
 - [ ] Day 7 — automated bench scenario + 📸 screenshot
-- [ ] Day 8 — ISO 15118 SECC + EVCC session completes
+- [x] Day 8 — ISO 15118 SECC + EVCC session completes
 - [ ] Day 9 — pcap captured, one EXI message decoded by hand
 - [ ] Day 10 — fault injected, log captured
 - [ ] Day 11 — `v2g_text.py` parser written, R007/R008 implemented
