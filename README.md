@@ -124,7 +124,7 @@ Full breakdown: [`docs/14-DAY-PLAN.md`](docs/14-DAY-PLAN.md)
 - [ ] Day 6 — dashboard live at `/ui`
 - [ ] Day 7 — automated bench scenario + 📸 screenshot
 - [x] Day 8 — ISO 15118 SECC + EVCC session completes
-- [ ] Day 9 — pcap captured, one EXI message decoded by hand
+- [x] Day 9 — pcap captured, one EXI message decoded by hand
 - [ ] Day 10 — fault injected, log captured
 - [ ] Day 11 — `v2g_text.py` parser written, R007/R008 implemented
 - [ ] Day 12 — 📄 analysis report finished

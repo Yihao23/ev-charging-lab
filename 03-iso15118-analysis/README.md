@@ -81,11 +81,20 @@ And one that most candidates get wrong / 还有一个大多数候选人会搞错
 - [x] Write it up: 📄 [`report/REPORT-01.md`](report/REPORT-01.md).
 
 ### Day 9 — see the bytes / 看见字节
-- [ ] `tcpdump` the interface, open the pcap in Wireshark.
-- [ ] Identify each layer: UDP 15118 (SDP) → TCP → V2GTP header → EXI blob.
-- [ ] Build [OpenV2Gx](https://github.com/uhi22/OpenV2Gx) and decode one EXI
+- [x] `tcpdump` the interface, open the pcap in Wireshark.
+      Containers each have their own network namespace, so the host sees
+      nothing — [`setup/capture-session.sh`](setup/capture-session.sh) captures
+      from inside the SECC's namespace without sudo.
+      容器各有独立网络命名空间，宿主机抓不到；脚本免 sudo 从 SECC 命名空间内抓。
+- [x] Identify each layer: UDP 15118 (SDP) → TCP → V2GTP header → EXI blob.
+      Wireshark 4.2 has no V2GTP dissector, so this repo ships one:
+      [`tools/v2gtp.lua`](tools/v2gtp.lua). It also flags any packet whose
+      declared Payload Length disagrees with the bytes present.
+      Wireshark 4.2 没有 V2GTP 解析器，仓库自带一个，并会标出分帧不一致的包。
+- [x] Build [OpenV2Gx](https://github.com/uhi22/OpenV2Gx) and decode one EXI
       message by hand. **Do this once — it demystifies the whole stack.**
       手动解码一条 EXI 消息。**做一次就够 —— 整个协议栈会瞬间去神秘化。**
+      📄 [`captures/session-02-decoded.md`](captures/session-02-decoded.md)
 
 ### Day 10 — break it / 搞坏它
 - [ ] Inject one fault (three options in `setup/run-secc-evcc.md`).
