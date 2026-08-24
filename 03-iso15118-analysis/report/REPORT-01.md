@@ -188,6 +188,14 @@ to, and treat the contradiction as a fault.
 **而 EVCC 从未抱怨** —— 十次循环里它都默默接受了 300 A。生产级的 EVCC 应该用它
 已经接受的 `PMax` 去钳位，并把这种矛盾当作故障处理。
 
+That was an observation, not yet a conclusion — accepting a limit that is too
+high proves only that nothing rejected it. **§5** tests it from the other side,
+dropping the station's offer *below* what the car said it needs, and confirms
+the EVCC does not read the field at all.
+这只是观察，还不是结论 —— 接受一个过高的限值，只能说明没人拒绝它。
+**第 5 节**从另一头验证：把桩的报价压到**低于**车声明的需求，
+确认了 EVCC 根本不读这个字段。
+
 ### Reading the Physical Value encoding / 读懂物理值编码
 
 ```json
@@ -235,18 +243,143 @@ ISO 15118 那一半。
 
 ## 5. Injected fault / 注入的故障
 
-> **Not done yet — Day 9.** Nothing was injected into this session; it ran clean
-> end to end. Writing up a fault I did not run would defeat the point of the
-> report.
-> **还没做 —— Day 9 的内容。** 这次会话没有注入任何故障，它从头到尾干净地跑完了。
-> 编造一个没跑过的故障会让这份报告失去意义。
+**Capture:** [`../captures/session-03-fault.pcap`](../captures/session-03-fault.pcap) ·
+[`session-03-fault-secc.log`](../captures/session-03-fault-secc.log) ·
+[`session-03-fault-evcc.log`](../captures/session-03-fault-evcc.log)
+**Reproduce:** [`setup/faults/01-current-below-ev-minimum.sh`](../setup/faults/01-current-below-ev-minimum.sh)
 
-**Planned / 计划注入:** make the SECC answer `ChargeParameterDiscoveryRes` with
-`EVSEProcessing="Ongoing"` forever, and see whether the EVCC honours the spec's
-timeout or hangs.
-让 SECC 在 `ChargeParameterDiscoveryRes` 里一直返回 `EVSEProcessing="Ongoing"`，
-看 EVCC 是遵守规范的超时还是挂死。
+### What I broke / 我改坏了什么
 
+§4 found the station advertising three power limits that disagree, and noted the
+EVCC accepted 300 A without complaint ten times over. That was an observation.
+This is the experiment that turns it into a finding.
+第 4 节发现桩报出三个互相矛盾的功率限值，而 EVCC 十次循环里都默默接受了 300 A。
+那只是观察。这个实验把它变成结论。
+
+One line in the SECC simulator, one variable:
+
+```diff
+  # get_ac_charge_params_v2() — the AC_EVSEChargeParameter in ChargeParameterDiscoveryRes
+  evse_max_current = PVEVSEMaxCurrent(
+-     multiplier=0, value=32, unit=UnitSymbol.AMPERE
++     multiplier=0, value=5, unit=UnitSymbol.AMPERE
+  )
+```
+
+`EVSENominalVoltage` (400 V) and the `SAScheduleList` `PMax` (11 kW) are left
+untouched, so exactly one thing changed. The car had asked for
+`EVMinCurrent = 10 A`; the station now offers **half of that**.
+`EVSENominalVoltage`(400 V) 和 `SAScheduleList` 的 `PMax`(11 kW) 都不动，
+保证只有一个变量。车报的 `EVMinCurrent` 是 10 A，桩现在只给它的一半。
+
+The patch is bind-mounted over the installed module, so the upstream repo is
+never modified and reverting is `rm` plus a restart.
+补丁以挂载方式覆盖已安装的模块，上游仓库一个字节都没改，撤销只需 rm 加重启。
+
+### Expected behaviour / 预期行为
+
+`EVMinCurrent` exists precisely so the station knows the floor below which the
+onboard charger cannot regulate. Offered 5 A against a stated minimum of 10 A,
+a correct EVCC should refuse — `PowerDeliveryReq(Stop)` or `SessionStopReq`,
+not `Start`.
+`EVMinCurrent` 存在的意义就是告诉桩"低于这个值车载充电机没法调节"。
+被给了 5 A 而自己声明最低 10 A，正确的 EVCC 应该拒绝 —— 发
+`PowerDeliveryReq(Stop)` 或 `SessionStopReq`，而不是 `Start`。
+
+### Observed behaviour / 实际行为
+
+Nothing changed. Not "handled badly" — **not read at all**.
+什么都没变。不是"处理得不好" —— 是**根本没读**。
+
+| | session-02 (healthy) | session-03 (fault) |
+|---|---|---|
+| Station's `EVSEMaxCurrent` | **32 A** | **5 A** |
+| Car's `ChargingProfileEntryMaxPower` | 11 000 W | **11 000 W** |
+| V2GTP messages | 38 | **38** |
+| Byte length of every message | — | **identical, all 38** |
+| Charging loop | 10 × `ChargingStatus` | **10 × `ChargingStatus`** |
+| EVCC exit code | 0 | **0** |
+| Errors / warnings in either log | 0 | **0** |
+
+The car declared it would draw **11 kW against a 5 A offer** — 5 A at
+three-phase 400 V is ≈3.46 kW, so **3.2× over**. Both ends then ran a textbook
+session to `SessionStop`.
+车宣称要拉 **11 kW，而桩只给了 5 A** —— 三相 400 V 下 5 A ≈ 3.46 kW，**超了 3.2 倍**。
+之后双方跑完了一次教科书般的会话，直到 `SessionStop`。
+
+### Root cause chain / 根因链
+
+```
+Symptom          Station can supply 3.46 kW, car requests 11 kW,
+现象             and both consider the session successful.
+
+First anomalous  ChargeParameterDiscoveryRes
+frame              AC_EVSEChargeParameter.EVSEMaxCurrent = 5 A   ← injected
+第一帧异常报文      SAScheduleList.PMax                  = 11 000 W (untouched)
+
+The field at     No single field is malformed. Two fields contradict each
+fault              other, and ISO 15118-2 states no precedence between them.
+出错的字段         没有哪个字段是坏的 —— 是两个字段互相矛盾，而规范没有规定谁优先。
+
+Why the peer     The EVCC builds its ChargingProfile from PMax alone. It never
+reacted that       reads AC_EVSEChargeParameter.EVSEMaxCurrent, so it copies
+way                11 000 W straight through — and therefore can never notice
+对端为什么那样反应   that 5 A is below its own EVMinCurrent of 10 A.
+                   Proof: the ChargingProfile is byte-identical to session-02's.
+
+What a real      1. Station: derive both limits from one source —
+station should      EVSEMaxCurrent = PMax / (√3 × EVSENominalVoltage) — or the
+do instead          ambiguity is permanent.
+真桩应该怎么做     2. Car: clamp to min(PMax, EVSEMaxCurrent × U × √3), and if the
+                    result falls below EVMinCurrent, send SessionStop rather
+                    than starting to charge.
+                 3. Both: treat the contradiction as a session-terminating
+                    fault, not something to continue silently through.
+```
+
+### The byte the fault lives in / 故障所在的那个字节
+
+Diffing message #12 (`ChargeParameterDiscoveryRes`, 325 bytes) across the two
+captures gives **75 differing bytes** — but only one of them is the fault:
+把两次抓包的第 12 条消息按字节对比，**75 个字节不同** —— 但只有一个是故障:
+
+| Offset | Bytes | What it is |
+|---|---|---|
+| 3 – 11 | 9 | `SessionID` — different every session, noise |
+| 219 – 283 | 65 | The `SalesTariff` signature (`Signature_isUsed=1`; an ECDSA P-256 signature is 64 bytes) — different every session, noise |
+| **323** | **1** | **the injected value** |
+
+```
+session-02:  0x80 = 1000 0000        32 << 2 = 128 = 0x80   ✅
+session-03:  0x14 = 0001 0100         5 << 2 =  20 = 0x14   ✅
+```
+
+The field sits at a 2-bit offset — EXI does not align values to byte
+boundaries — so the value appears shifted left by two.
+字段落在 2 位偏移上 —— EXI 不把值对齐到字节边界 —— 所以数值看起来左移了两位。
+
+### Method note: do not diff EXI / 方法论：别对 EXI 做字节 diff
+
+Signal-to-noise here is **1 : 74**. SessionID and a per-session signature swamp
+the one byte that matters, and without already knowing the answer the diff is
+useless. Anything signed or session-keyed has to be decoded to the field level
+before comparison — which is why protocol-aware tooling exists and a generic
+packet differ cannot replace it.
+这里的信噪比是 **1 : 74**。SessionID 和每次不同的签名淹没了唯一有意义的那个字节，
+事先不知道答案的话，diff 毫无用处。凡是带签名或带会话密钥的协议，
+都必须先解码到字段层面再比较 —— 这正是协议感知工具存在的理由，
+通用抓包工具替代不了。
+
+### Why this one matters / 为什么这个故障值得记
+
+On AC the station does not regulate current; it publishes a ceiling and trusts
+the onboard charger to stay under it. A car that never reads that ceiling turns
+the station's limit into a suggestion, and the only remaining protection is the
+upstream breaker. In a depot where twenty chargers share one feeder, that is not
+a theoretical concern.
+交流充电下桩不控制电流，它只发布一个上限，指望车载充电机自觉。一辆从不读这个
+上限的车，把桩的限值变成了建议 —— 剩下的唯一保护就是上级断路器。
+在二十把枪共用一路进线的场站里，这不是理论问题。
 ---
 
 ## 6. Findings from the automated analyzer / 自动分析器的发现

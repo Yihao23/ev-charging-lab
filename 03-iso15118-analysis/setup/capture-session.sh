@@ -31,7 +31,11 @@ docker rm -f "$CAPNAME" >/dev/null 2>&1 || true
 
 echo "==> starting SECC + redis (EVCC stays down so the capture can be armed first)"
 cd "$STACK"
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d secc redis >/dev/null
+# COMPOSE_EXTRA lets a fault script layer one more override on top (see faults/).
+# COMPOSE_EXTRA 让故障脚本再叠一层 override(见 faults/)。
+COMPOSE_FILES=(-f docker-compose.yml -f docker-compose.dev.yml)
+if [ -n "${COMPOSE_EXTRA:-}" ]; then COMPOSE_FILES+=(-f "$COMPOSE_EXTRA"); fi
+docker compose "${COMPOSE_FILES[@]}" up -d --force-recreate secc redis >/dev/null
 
 # Wait on the listener being ready, not on a fixed number of seconds.
 # NOTE: `docker logs ... | grep -q` looks nicer but is broken under

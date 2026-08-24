@@ -97,10 +97,27 @@ And one that most candidates get wrong / 还有一个大多数候选人会搞错
       📄 [`captures/session-02-decoded.md`](captures/session-02-decoded.md)
 
 ### Day 10 — break it / 搞坏它
-- [ ] Inject one fault (three options in `setup/run-secc-evcc.md`).
-- [ ] Save the broken session to `captures/session-02-fault.log`.
-- [ ] Trace the root cause by hand, before using any tool.
+- [x] Inject one fault — option 1, the impossible power range, scripted for
+      reproducibility: [`setup/faults/01-current-below-ev-minimum.sh`](setup/faults/01-current-below-ev-minimum.sh).
+      One line of the SECC simulator, bind-mounted over the installed module so
+      the upstream repo stays untouched.
+      三选一里的第 1 个，写成脚本可复现；挂载覆盖，不改上游仓库。
+- [x] Save the broken session:
+      [`captures/session-03-fault.pcap`](captures/session-03-fault.pcap) +
+      both container logs.
+- [x] Trace the root cause by hand, before using any tool.
       在用任何工具之前，先手工追出根因。
+      📄 [`report/REPORT-01.md` §5](report/REPORT-01.md)
+
+      **Finding / 结论:** the EVCC never reads
+      `AC_EVSEChargeParameter.EVSEMaxCurrent`. Offered 5 A against its own
+      stated `EVMinCurrent` of 10 A, it requested 11 kW anyway — a
+      `ChargingProfile` byte-identical to the healthy run. 38 messages, same
+      lengths, zero errors, exit 0. The fault is invisible in Wireshark and
+      lives in exactly **one** byte of a 325-byte message.
+      EVCC 根本不读那个字段。被给了 5 A(自己声明最低 10 A)，它照样申请 11 kW，
+      ChargingProfile 和正常会话逐字节相同。38 条消息、长度全同、零错误。
+      Wireshark 里看不出任何异常，故障只存在于 325 字节里的**一个**字节。
 
 ### Day 11-12 — write it up / 写报告
 - [ ] Fill in `report/REPORT-TEMPLATE.md`.
