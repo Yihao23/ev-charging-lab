@@ -175,6 +175,134 @@ _CSS = """
 """
 
 
+# Which MeterValues measurand answers the limit, per unit. Comparing a limit in
+# amps against a curve in watts would be meaningless, so the plot follows
+# whatever unit SetChargingProfile was written in.
+# 按单位决定该拿哪个 MeterValues 测量值来对照限值。拿 A 的限值去比 W 的曲线毫无意义，
+# 所以图跟随 SetChargingProfile 自己用的单位。
+_MEASURAND_FOR = {"A": "Current.Import", "W": "Power.Active.Import"}
+
+
+def _limit_steps(session: Session):
+    """(profile offset in seconds, [(seconds, limit), ...], unit) or None.
+    从 SetChargingProfile 取出 (时间偏移, [(秒, 限值), ...], 单位)。"""
+    start = session.events[0].ts
+    for e in session.events:
+        if e.action != "SetChargingProfile":
+            continue
+        schedule = (e.payload.get("csChargingProfiles") or {}).get("chargingSchedule") or {}
+        periods = schedule.get("chargingSchedulePeriod") or []
+        unit = schedule.get("chargingRateUnit")
+        if not periods or unit not in _MEASURAND_FOR:
+            continue
+        steps = [(float(p["startPeriod"]), float(p["limit"])) for p in periods]
+        return (e.ts - start).total_seconds(), steps, unit
+    return None
+
+
+def _measured(session: Session, unit: str) -> list:
+    """[(seconds since session start, value), ...] from MeterValues.
+    从 MeterValues 取出 [(距会话开始的秒数, 数值), ...]。"""
+    wanted = _MEASURAND_FOR[unit]
+    start = session.events[0].ts
+    out = []
+    for e in session.events:
+        if e.action != "MeterValues":
+            continue
+        for entry in e.payload.get("meterValue") or []:
+            for sample in entry.get("sampledValue") or []:
+                if sample.get("measurand") == wanted:
+                    out.append(((e.ts - start).total_seconds(), float(sample["value"])))
+    return out
+
+
+def svg(session: Session, role: str = "cp"):
+    """What the backend allowed, drawn against what the car actually drew.
+    后台允许多少，和车实际拉了多少，画在一起。
+
+    Returns None when the log carries no meter data — a V2G session has no
+    MeterValues at all, and an empty pair of axes is worse than no plot.
+    日志里没有电表数据时返回 None —— V2G 会话根本没有 MeterValues，
+    画一对空坐标轴比不画更糟。
+
+    SVG is text, so this needs no plotting library and stays inside the
+    standard-library-only rule that lets the tool run on a station's embedded
+    Linux without a package manager.
+    SVG 就是文本，所以不需要绘图库，也就守住了"只用标准库"那条规则 ——
+    正是它让这个工具能在没有包管理器的嵌入式 Linux 上跑起来。
+    """
+    profile = _limit_steps(session)
+    if profile is None:
+        return None
+    offset, steps, unit = profile
+    points = _measured(session, unit)
+    if not points:
+        return None
+
+    W, H = 720, 260
+    L, R, T, B = 52, 16, 20, 34
+    span = max(session.duration_s, steps[-1][0] + offset, 1.0)
+    top = max(max(v for _, v in points), max(v for _, v in steps)) * 1.2
+
+    def x(sec):
+        return L + (W - L - R) * min(sec, span) / span
+
+    def y(val):
+        return T + (H - T - B) * (1 - val / top)
+
+    # The limit is a step function, not a slope: it holds until the next period
+    # begins. A straight line between periods would draw a ramp the station
+    # never commanded.
+    # 限值是阶梯函数而不是斜坡: 它一直保持到下一个时段开始。
+    # 在两个时段之间画直线，会画出一个桩从未下达过的渐变。
+    step_pts = []
+    for i, (sec, limit) in enumerate(steps):
+        at = offset + sec
+        if i:
+            step_pts.append("%.1f,%.1f" % (x(at), y(steps[i - 1][1])))
+        step_pts.append("%.1f,%.1f" % (x(at), y(limit)))
+    step_pts.append("%.1f,%.1f" % (x(span), y(steps[-1][1])))
+
+    grid = "".join(
+        '<line x1="%d" y1="%.1f" x2="%d" y2="%.1f" stroke="#e6e6e9"/>'
+        '<text x="%d" y="%.1f" text-anchor="end" font-size="10" fill="#5f6368">%.0f</text>'
+        % (L, y(top * f), W - R, y(top * f), L - 8, y(top * f) + 4, top * f)
+        for f in (0.0, 0.25, 0.5, 0.75, 1.0)
+    )
+    ticks = "".join(
+        '<text x="%.1f" y="%d" text-anchor="middle" font-size="10" fill="#5f6368">%.0fs</text>'
+        % (x(span * f), H - B + 18, span * f)
+        for f in (0.0, 0.25, 0.5, 0.75, 1.0)
+    )
+    dots = "".join('<circle cx="%.1f" cy="%.1f" r="2.5" fill="#1a73e8"/>' % (x(t), y(v))
+                   for t, v in points)
+    curve = " ".join("%.1f,%.1f" % (x(t), y(v)) for t, v in points)
+
+    return (
+        '<svg viewBox="0 0 %d %d" width="100%%" role="img" '
+        'aria-label="measured %s against the SetChargingProfile limit" '
+        'xmlns="http://www.w3.org/2000/svg" font-family="sans-serif">'
+        '%s%s'
+        '<text x="%d" y="%d" text-anchor="end" font-size="10" fill="#5f6368">%s</text>'
+        '<polyline points="%s" fill="none" stroke="#b3261e" stroke-width="1.5" '
+        'stroke-dasharray="5 3"/>'
+        '<polyline points="%s" fill="none" stroke="#1a73e8" stroke-width="2"/>'
+        '%s'
+        '<g font-size="11">'
+        '<line x1="%d" y1="%d" x2="%d" y2="%d" stroke="#b3261e" stroke-width="1.5" '
+        'stroke-dasharray="5 3"/>'
+        '<text x="%d" y="%d" fill="#5f6368">limit (SetChargingProfile)</text>'
+        '<line x1="%d" y1="%d" x2="%d" y2="%d" stroke="#1a73e8" stroke-width="2"/>'
+        '<text x="%d" y="%d" fill="#5f6368">measured (%s)</text>'
+        '</g></svg>'
+        % (W, H, _MEASURAND_FOR[unit], grid, ticks,
+           L - 8, T - 6, unit,
+           " ".join(step_pts), curve, dots,
+           L, H - 10, L + 18, H - 10, L + 24, H - 6,
+           L + 190, H - 10, L + 208, H - 10, L + 214, H - 6, _MEASURAND_FOR[unit])
+    )
+
+
 def html(session: Session, role: str = "cp") -> str:
     """One self-contained file: no CDN, no stylesheet, no script.
     一个自包含的文件: 没有 CDN、没有外部样式表、没有脚本。
@@ -201,6 +329,9 @@ def html(session: Session, role: str = "cp") -> str:
                     f"<th>Message</th></tr>{rows}</table>")
     else:
         findings = "<p class='none'>No findings. 没有发现问题。</p>"
+
+    chart = svg(session, role)
+    plot = f"<h2>Delivered vs allowed / 实际 vs 允许</h2>{chart}" if chart else ""
 
     start = session.events[0].ts if session.events else None
     timeline = "".join(
@@ -230,7 +361,7 @@ def html(session: Session, role: str = "cp") -> str:
   <div class="card warn"><b>{len(warnings)}</b><span>warnings / 警告</span></div>
 </div>
 
-<h2>Findings / 问题清单</h2>
+{plot}<h2>Findings / 问题清单</h2>
 {findings}
 
 <h2>Timeline / 时间线</h2>

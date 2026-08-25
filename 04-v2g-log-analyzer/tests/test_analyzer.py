@@ -455,9 +455,17 @@ class TestHtmlRender(unittest.TestCase):
         """No CDN, no external stylesheet, no fetch. It has to open on a laptop
         with no network, from an attachment.
         没有 CDN、没有外部样式表、没有网络请求。它得能在断网的笔记本上、
-        从一个附件里直接打开。"""
+        从一个附件里直接打开。
+
+        The check is on the attributes that cause a request, not on the string
+        "http" — the SVG carries `xmlns="http://www.w3.org/2000/svg"`, which is
+        an XML namespace and is never fetched, exactly like the ISO 15118 URNs.
+        检查的是会触发请求的属性，而不是 "http" 这个字符串 —— SVG 里带着
+        `xmlns="http://www.w3.org/2000/svg"`，那是 XML 命名空间、永远不会被访问，
+        和 ISO 15118 那些 URN 一样。
+        """
         out = render.html(self._session())
-        for forbidden in ("http://", "https://", "<script src", "<link "):
+        for forbidden in ("src=", "href=", "<link", "<script", "@import"):
             with self.subTest(forbidden=forbidden):
                 self.assertNotIn(forbidden, out)
         self.assertIn("<style>", out)
@@ -487,3 +495,47 @@ class TestHtmlRender(unittest.TestCase):
                        "--format", "html", "-o", str(target)])
             self.assertEqual(rc, 0)
             self.assertIn("<!DOCTYPE html>", target.read_text())
+
+
+class TestSvgPlot(unittest.TestCase):
+    """What the backend allowed against what the car actually drew. The whole
+    smart-charging story is that those two lines track each other.
+    后台允许多少 vs 车实际拉了多少。智能充电的全部故事就是这两条线互相跟随。
+    """
+
+    def _session(self, name):
+        from v2ganalyzer.cli import analyse
+        return analyse(SAMPLES / name, 2000.0)
+
+    def test_draws_both_series(self):
+        out = render.svg(self._session("ocpp_session.log"))
+        self.assertTrue(out.lstrip().startswith("<svg"))
+        self.assertIn("</svg>", out)
+        self.assertIn("limit", out)      # what SetChargingProfile allowed
+        self.assertIn("measured", out)   # what MeterValues reported
+
+    def test_none_when_there_is_nothing_to_plot(self):
+        """A V2G session carries no MeterValues, and a plot of nothing is worse
+        than no plot.
+        V2G 会话没有 MeterValues，画一张空图比不画更糟。"""
+        self.assertIsNone(render.svg(self._session("v2g_session.log")))
+
+    def test_uses_the_unit_the_profile_was_written_in(self):
+        """SetChargingProfile in this session is in amps, so the plot is amps —
+        comparing a limit in A against a curve in W would be meaningless.
+        这次会话的 SetChargingProfile 用的是安培，所以图也用安培 ——
+        拿 A 的限值去比 W 的曲线毫无意义。"""
+        out = render.svg(self._session("ocpp_session.log"))
+        self.assertIn(">A<", out)
+        self.assertNotIn(">W<", out)
+
+    def test_html_embeds_it_inline(self):
+        out = render.html(self._session("ocpp_session.log"))
+        self.assertIn("<svg", out)
+        for forbidden in ("src=", "href=", "<link", "<script", "@import"):
+            with self.subTest(forbidden=forbidden):
+                self.assertNotIn(forbidden, out)
+
+    def test_html_without_meter_data_has_no_plot(self):
+        out = render.html(self._session("v2g_session.log"))
+        self.assertNotIn("<svg", out)

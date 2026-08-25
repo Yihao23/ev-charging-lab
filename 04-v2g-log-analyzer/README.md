@@ -186,7 +186,26 @@ it is diagnosing.** Say this out loud — it is a real engineering judgement.
       `FAILED_SequenceError` 才能真正验证它。
 
 ### Day 12 — make it presentable / 让它可展示
-- [ ] Implement the SVG current plot (`render.py` TODO 1).
+- [x] Implement the SVG current plot (`render.py` TODO 1).
+      What `SetChargingProfile` allowed, drawn against what `MeterValues`
+      reported. In [`report-example-smart-charging.html`](samples/report-example-smart-charging.html)
+      the station holds 32 A, the profile's second period starts at +30 s, and
+      the measured current steps down to 16 A one sample later — the whole
+      smart-charging story in one picture.
+      `SetChargingProfile` 允许多少，对照 `MeterValues` 报了多少。示例里桩稳在 32 A，
+      profile 第二个时段在 +30 秒开始，实测电流在下一个采样点降到 16 A ——
+      智能充电的完整故事，一张图说完。
+
+      SVG is text, so no plotting library and the standard-library-only rule
+      holds. The limit is drawn as a step function, not a slope: it holds until
+      the next period begins, and a straight line between periods would show a
+      ramp the station never commanded. Returns `None` rather than empty axes
+      when a log has no meter data — every V2G capture, and the hand-written
+      OCPP faulty sample whose profile carries no `chargingSchedule`.
+      SVG 就是文本，所以不需要绘图库，"只用标准库"那条规则守住了。限值画成阶梯而不是
+      斜坡: 它保持到下一个时段开始，两点间画直线会画出桩从未下达过的渐变。
+      日志没有电表数据时返回 `None` 而不是空坐标轴 —— 所有 V2G 抓包，
+      以及手写的 OCPP 故障样本(它的 profile 里根本没有 chargingSchedule)。
 - [x] Implement `--format html` (`render.py` TODO 2).
       One self-contained file — inline CSS, no CDN, no stylesheet, no script —
       because a report that needs the internet is not an attachment, it is a
