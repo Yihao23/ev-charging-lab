@@ -153,13 +153,34 @@ it is diagnosing.** Say this out loud — it is a real engineering judgement.
       两份日志**都**报警 —— 矛盾在注入故障之前就存在。正常日志留作测试用例，
       正是为了防止规则被"照着故障日志凑出来"。
 - [ ] Implement **R008 (truncated session)** and **R010 (out-of-order session)**.
-- [ ] Extract `ResponseCode` from each `...Res` — anything not `OK_*` is a finding.
+- [x] Extract `ResponseCode` from each `...Res` — anything not `OK_*` is a finding.
+      **R011.** ISO 15118 has no CALLERROR frame, so `Kind.CALL_ERROR` never
+      occurs in a V2G log and R002 can never fire on one; R003's `BAD_STATUS`
+      is OCPP vocabulary and matches none of the `FAILED_*` codes. Without this
+      rule a session that died on an expired certificate passes in silence.
+      Whitelists success (4 OK codes in the session schema, 2 in the handshake)
+      rather than blacklisting the 23 ways to fail.
+      ISO 15118 没有 CALLERROR 帧，R002 在 V2G 上永远报不出东西；R003 的
+      BAD_STATUS 是 OCPP 词汇，一个 FAILED_* 都匹配不上。用白名单列成功码，
+      而不是黑名单列 23 种失败。
+
+      ⚠️ Only exercised against synthetic responses so far — all three captured
+      sessions succeeded. Injecting `FAILED_SequenceError` (option 3 in
+      `03-iso15118-analysis/setup/run-secc-evcc.md`) would validate it for real.
+      ⚠️ 目前只用合成响应验证过 —— 三份抓到的会话都成功了。注入
+      `FAILED_SequenceError` 才能真正验证它。
 
 ### Day 12 — make it presentable / 让它可展示
 - [ ] Implement the SVG current plot (`render.py` TODO 1).
 - [ ] Implement `--format html` (`render.py` TODO 2).
-- [ ] Generate one report from a real broken session and commit it as
+- [x] Generate one report from a real broken session and commit it as
       `samples/report-example.md`. **This file is your interview artefact.**
+      Two of them now: [`report-example.md`](samples/report-example.md) from the
+      OCPP faulty sample (7 findings across 6 rules) and
+      [`report-example-v2g.md`](samples/report-example-v2g.md) from the ISO 15118
+      session with 5 A injected in project 03 (R007).
+      现在有两份: OCPP 那份 7 条 findings 覆盖 6 条规则，V2G 那份是项目 03 里
+      注入 5 A 的那次会话。
       从一次真实的故障会话生成报告并提交。**这个文件就是你的面试作品。**
 
 ---

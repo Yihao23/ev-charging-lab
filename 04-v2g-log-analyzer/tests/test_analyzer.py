@@ -298,3 +298,57 @@ class TestR007PowerLimitMismatch(unittest.TestCase):
             '"EVSEMaxCurrent": {"Value": 32, "Multiplier": 0, "Unit": "A"}}}',
         )
         self.assertEqual(self._r007(v2g_text.parse([req, res])), [])
+
+
+class TestR011ResponseCode(unittest.TestCase):
+    """ISO 15118 has no CALLERROR frame. A failure is an ordinary `...Res`
+    whose ResponseCode is not OK — so `Kind.CALL_ERROR` never appears in a V2G
+    log and R002 can never fire on one. Something has to read the field.
+    ISO 15118 没有 CALLERROR 这种帧。失败就是一条普通的 `...Res`，只是里面的
+    ResponseCode 不是 OK —— 所以 V2G 日志里永远不会出现 `Kind.CALL_ERROR`，
+    R002 也就永远报不出东西。总得有人去读那个字段。
+
+    The rule whitelists success rather than blacklisting failure: ISO 15118-2
+    defines 4 OK codes against 22 FAILED ones, plus `Failed_NoNegotiation` in
+    the handshake schema. A blacklist would go stale the moment a code is added.
+    规则用白名单而不是黑名单: ISO 15118-2 定义了 4 个 OK 码、22 个 FAILED 码，
+    握手 schema 里还有一个 `Failed_NoNegotiation`。黑名单一加新码就过期。
+    """
+
+    @staticmethod
+    def _with_code(code):
+        line = V2G_RES.replace('"ResponseCode": "OK_NewSessionEstablished"',
+                               f'"ResponseCode": "{code}"')
+        return [f for f in rules.run(v2g_text.parse([line])) if f.rule == "R011"]
+
+    def test_flags_a_failed_response(self):
+        (f,) = self._with_code("FAILED_CertificateExpired")
+        self.assertEqual(f.severity, "error")
+        self.assertIn("SessionSetupRes", f.message)
+        self.assertIn("FAILED_CertificateExpired", f.message)
+
+    def test_flags_the_handshake_spelling_too(self):
+        """The AppProtocol schema spells it `Failed_NoNegotiation`, not FAILED_*.
+        握手 schema 拼的是 `Failed_NoNegotiation`，不是 FAILED_*。"""
+        (f,) = self._with_code("Failed_NoNegotiation")
+        self.assertEqual(f.severity, "error")
+
+    def test_silent_on_every_success_code(self):
+        for code in ("OK", "OK_NewSessionEstablished", "OK_OldSessionJoined",
+                     "OK_SuccessfulNegotiation"):
+            with self.subTest(code=code):
+                self.assertEqual(self._with_code(code), [])
+
+    def test_certificate_expiring_is_a_warning_not_an_error(self):
+        """`OK_CertificateExpiresSoon` is a success — the session proceeds — but
+        it is the one OK code that asks the operator to do something.
+        `OK_CertificateExpiresSoon` 是成功码，会话照常进行，
+        但它是唯一一个要求运营方去做点什么的 OK 码。"""
+        (f,) = self._with_code("OK_CertificateExpiresSoon")
+        self.assertEqual(f.severity, "warning")
+
+    def test_clean_sessions_produce_no_findings(self):
+        for log in ("v2g_session.log", "v2g_session_fault.log"):
+            with self.subTest(log=log):
+                events = v2g_text.parse((SAMPLES / log).read_text().splitlines())
+                self.assertEqual([f for f in rules.run(events) if f.rule == "R011"], [])

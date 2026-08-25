@@ -238,6 +238,50 @@ def r007_power_limit_mismatch(events: list[Event], cfg: dict) -> list[Finding]:
     return out
 
 
+# Success in ISO 15118-2 is a short whitelist — 4 codes in the session schema
+# and 2 in the handshake — against 23 ways to fail. Blacklisting failure would
+# go stale the moment the standard adds a code.
+# ISO 15118-2 的成功码是个短白名单 —— 会话 schema 里 4 个、握手里 2 个 ——
+# 对应 23 种失败。用黑名单列失败码，标准一加新码就过期。
+_OK_PREFIX = "OK"
+# The one success code that still wants a human to act on it.
+# 唯一一个仍然需要人去处理的成功码。
+_OK_BUT_ACT = {"OK_CertificateExpiresSoon"}
+
+
+def r011_failed_response_code(events: list[Event], cfg: dict) -> list[Finding]:
+    """A V2G response refused the request.
+    一条 V2G 响应拒绝了请求。
+
+    ISO 15118 has no CALLERROR frame: a failure is an ordinary `...Res` whose
+    ResponseCode is not OK. That means Kind.CALL_ERROR never occurs in a V2G log
+    and R002 can never fire on one, while R003's BAD_STATUS list is OCPP
+    vocabulary and matches none of the FAILED_* codes. Without this rule a
+    session that died on an expired certificate passes the analyzer in silence.
+    ISO 15118 没有 CALLERROR 帧: 失败就是一条普通的 `...Res`，只是 ResponseCode
+    不是 OK。于是 V2G 日志里永远不会出现 Kind.CALL_ERROR，R002 永远报不出东西；
+    而 R003 的 BAD_STATUS 是 OCPP 词汇，一个 FAILED_* 都匹配不上。没有这条规则，
+    一次因证书过期而失败的会话会静默通过分析器。
+    """
+    out: list[Finding] = []
+    for e in events:
+        if e.kind is not Kind.CALL_RESULT:
+            continue
+        code = e.payload.get("ResponseCode")
+        if not isinstance(code, str):
+            continue
+        what = e.action or "response"
+        if code in _OK_BUT_ACT:
+            out.append(Finding("R011", "warning",
+                               f"{what} returned ResponseCode={code}",
+                               line_no=e.line_no, ts=e.ts))
+        elif not code.startswith(_OK_PREFIX):
+            out.append(Finding("R011", "error",
+                               f"{what} returned ResponseCode={code}",
+                               line_no=e.line_no, ts=e.ts))
+    return out
+
+
 RULES = [
     r001_unanswered_calls,
     r002_call_errors,
@@ -246,6 +290,7 @@ RULES = [
     r005_heartbeat_gaps,
     r006_illegal_state_transitions,
     r007_power_limit_mismatch,
+    r011_failed_response_code,
 ]
 
 
