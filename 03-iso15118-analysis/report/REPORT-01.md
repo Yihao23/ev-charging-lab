@@ -384,17 +384,81 @@ a theoretical concern.
 
 ## 6. Findings from the automated analyzer / 自动分析器的发现
 
-> **Not run yet.** [Project 04](../../04-v2g-log-analyzer/)'s
-> `parsers/v2g_text.py` is still a skeleton — it cannot read this log format.
-> Feeding it these two files is what will finish that parser.
-> **还没跑。**[项目 04](../../04-v2g-log-analyzer/) 的 `parsers/v2g_text.py`
-> 还是骨架，读不了这个日志格式。用这两个文件去喂它，正好把那个解析器写完。
+[Project 04](../../04-v2g-log-analyzer/) can read these logs now. Its
+`parsers/v2g_text.py` targets the `exi_codec` lines rather than the shorter
+`comm_session` ones, because only those carry the decoded payload — and the
+payload is what a rule needs to compare two fields against each other.
+[项目 04](../../04-v2g-log-analyzer/) 现在能读这些日志了。解析器盯的是
+`exi_codec` 那两行而不是更短的 `comm_session` 行，因为只有它们带解码后的载荷 ——
+而载荷正是"拿两个字段互相比对"这类规则需要的东西。
 
-The §4 contradiction is a good first rule to encode: **compare `PMax` against
-`EVSEMaxCurrent × EVSENominalVoltage × phases` and flag a mismatch.**
-第 4 节的矛盾是个很好的第一条规则: **把 `PMax` 和
-`EVSEMaxCurrent × EVSENominalVoltage × 相数` 对比，不一致就告警。**
+```bash
+$ python -m v2ganalyzer samples/v2g_session_fault.log --format md
+```
 
+| Metric | Value |
+|---|---|
+| Frames parsed | 38 |
+| Requests | 19 |
+| Duration | 1.8 s |
+| Errors | **1** |
+| Warnings | 0 |
+
+| Rule | Severity | Line | Message |
+|---|---|---|---|
+| R007 | error | 75 | station advertises PMax=11000 W but EVSEMaxCurrent=5 A at 400 V implies 3464 W |
+
+### R007, and why it fires on the healthy session too / R007，以及它为什么在正常会话上也报警
+
+The rule encodes §4's contradiction: compare the `PMax` in the `SAScheduleList`
+against `EVSEMaxCurrent × EVSENominalVoltage × √3`, and flag a relative
+difference above 10 %. The phase factor comes from the *request*
+(`RequestedEnergyTransferMode`) and the limits from the *response*, so no single
+log line can express it — which is the whole reason a session-level analyzer
+exists.
+规则把第 4 节的矛盾编码了下来: 把 `SAScheduleList` 里的 `PMax` 和
+`EVSEMaxCurrent × EVSENominalVoltage × √3` 对比，相对差超过 10% 就告警。
+相数来自**请求**里的 `RequestedEnergyTransferMode`，限值来自**响应** ——
+任何单独一行日志都表达不了，这正是会话级分析器存在的理由。
+
+| Log | `PMax` | `EVSEMaxCurrent` | implied | difference | flagged |
+|---|---|---|---|---|---|
+| `v2g_session.log` (healthy) | 11 000 W | 32 A | 22 170 W | 50.4 % | ✅ |
+| `v2g_session_fault.log` | 11 000 W | 5 A | 3 464 W | 68.5 % | ✅ |
+| synthetic, consistent | 22 170 W | 32 A | 22 170 W | 0 % | — |
+
+**The healthy session is flagged on purpose.** The contradiction predates the
+injected fault — the station has been advertising two incompatible ceilings
+since [`session-01`](../captures/session-01-secc.log). A rule that fired only on
+the broken log would have been fitted to that log rather than derived from the
+protocol, so the healthy capture is kept as a test case precisely to prevent
+that.
+**正常会话被告警是刻意的。** 那个矛盾在注入故障之前就存在 —— 从
+[`session-01`](../captures/session-01-secc.log) 起，桩报的就是两个互不兼容的上限。
+一条只在故障日志上报警的规则，说明它是照着那份日志凑出来的、而不是从协议推导出来的，
+所以正常抓包被专门留作测试用例来防止这件事。
+
+### What the rule deliberately does not decide / 规则刻意不做的判断
+
+It reports that the two disagree, not which one is right — only the station
+knows whether its hardware can really deliver 32 A or only 11 kW. It also does
+not distinguish the two directions, though they differ in consequence: a
+schedule *above* the electrical rating means the car will over-draw and trip the
+breaker, while one *below* it merely wastes capacity. Both are configuration
+defects, and today's direction is no guarantee of tomorrow's.
+它只报告两者不一致，不判断谁对 —— 只有桩自己知道硬件到底能给 32 A 还是只能给 11 kW。
+它也不区分两个方向，尽管后果不同: 计划**高于**电气额定值意味着车会超拉、跳断路器，
+**低于**则只是浪费容量。两者都是配置缺陷，而且今天的方向不保证明天不变。
+
+### Known limitation / 已知限制
+
+The parser drops the `V2G_Message` `Header`, so `SessionID` is not kept and one
+file is assumed to hold one session. `session-02-secc.log` actually contains
+two runs, and correlating across them would pair a request from one session with
+a response from the other. Keying `uid` on `SessionID:MessageName` would fix it.
+解析器丢掉了 `V2G_Message` 的 `Header`，所以 `SessionID` 没有保留，
+默认一个文件只有一次会话。`session-02-secc.log` 实际含两次运行，跨会话配对会把
+一次会话的请求和另一次的响应配到一起。把 `uid` 改成 `SessionID:消息名` 即可修复。
 ---
 
 ## 7. What I would do next / 下一步

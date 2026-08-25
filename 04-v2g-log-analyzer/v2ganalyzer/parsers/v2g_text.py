@@ -23,6 +23,7 @@ Suggested source / 建议的日志来源:
 
 from __future__ import annotations
 
+import json
 import re
 from datetime import datetime
 
@@ -50,14 +51,36 @@ ISO15118_2_DC_ORDER = [
     "SessionStop",
 ]
 
-# TODO(you): replace this placeholder with the regex that matches YOUR log.
-# TODO(你): 用能匹配**你自己**日志的正则替换这个占位符。
+# Matches the two lines EcoG-io/iso15118 prints per message. It deliberately
+# targets the exi_codec lines rather than the shorter comm_session ones
+# ("SessionSetupReq received"), because only these carry the decoded payload —
+# and the payload is what rules like R007 need. The regex only has to split the
+# line; json.loads does the rest.
+# 匹配 EcoG-io/iso15118 每条消息打印的两行。刻意选 exi_codec 那两行，而不是更短的
+# comm_session 行("SessionSetupReq received")，因为只有它们带解码后的载荷 ——
+# 而载荷正是 R007 这类规则需要的。正则只负责把行切开，剩下的交给 json.loads。
+#
+#   INFO    2026-08-23 08:03:22,463 - iso15118.shared.exi_codec (302): \
+#       Decoded message (ns=urn:iso:15118:2:2013:MsgDef): {"V2G_Message":{...}}
+#   INFO    2026-08-23 08:03:22,464 - iso15118.shared.exi_codec (248): \
+#       Message to encode (ns=urn:iso:15118:2:2013:MsgDef): {"V2G_Message": {...}}
 LINE = re.compile(
-    r"^(?P<ts>\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}[,.]\d{3})"
-    r".*?\[(?P<role>SECC|EVCC)\]\s+"
-    r"(?P<dir>Sending|Received)\s+"
-    r"(?P<msg>\w+?)(?P<rr>Req|Res)\b"
+    r"^\w+\s+"                                                   # INFO / DEBUG / WARNING
+    r"(?P<ts>\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}[,.]\d{3})"
+    r".*?exi_codec \(\d+\): "                                    # skip the logger prefix
+    r"(?P<dir>Decoded message|Message to encode) "                # received vs sent
+    r"\(ns=(?P<ns>[^)]+)\): "                                     # which schema
+    r"(?P<json>\{.*)$"                                            # the whole payload
 )
+
+# The log carries a third namespace, xmldsig, for the SalesTariff signature.
+# Those lines are not V2G messages and must not become events.
+# 日志里还有第三个命名空间 xmldsig，用于 SalesTariff 的签名。
+# 那些行不是 V2G 消息，不能变成 Event。
+V2G_NAMESPACES = frozenset({
+    "urn:iso:15118:2:2013:MsgDef",
+    "urn:iso:15118:2:2010:AppProtocol",
+})
 
 
 def sniff(lines: list[str]) -> bool:
@@ -78,23 +101,51 @@ def parse(lines: list[str]) -> list[Event]:
     events: list[Event] = []
     for n, line in enumerate(lines, start=1):
         m = LINE.search(line)
-        if not m:
+        if not m or m.group("ns") not in V2G_NAMESPACES:
             continue
+
+        # A truncated line is a torn log, not a protocol error — skip it rather
+        # than take the whole file down.
+        # 截断的行是日志被截断了，不是协议错误 —— 跳过，不要让整个文件解析失败。
+        try:
+            doc = json.loads(m.group("json"))
+        except json.JSONDecodeError:
+            continue
+
         ts = datetime.strptime(
             m.group("ts").replace(",", ".").replace("T", " "), "%Y-%m-%d %H:%M:%S.%f"
         )
-        is_request = m.group("rr") == "Req"
-        events.append(
-            Event(
-                ts=ts,
-                kind=Kind.CALL if is_request else Kind.CALL_RESULT,
-                direction=Direction.OUT if m.group("dir") == "Sending" else Direction.IN,
-                action=m.group("msg") if is_request else "",
-                uid=m.group("msg"),      # message name doubles as the pairing key
-                raw=line.rstrip("\n"),
-                line_no=n,
+        # Session messages are wrapped in V2G_Message/Body; the two handshake
+        # messages are not, and carry the message name as the top-level key.
+        # 会话消息包在 V2G_Message/Body 里；两条握手消息没有外壳，
+        # 消息名就是顶层的键。
+        body = doc["V2G_Message"]["Body"] if "V2G_Message" in doc else doc
+        inbound = m.group("dir") == "Decoded message"
+
+        for name, payload in body.items():
+            # SalesTariff and its signature are encoded separately for signing
+            # and share the V2G namespace, so the namespace filter above does
+            # not catch them. Only Req/Res are messages.
+            # SalesTariff 和它的签名是为签名单独编码的，且共用 V2G 命名空间，
+            # 上面的命名空间过滤挡不住它们。只有 Req/Res 才是消息。
+            if not name.endswith(("Req", "Res")):
+                continue
+            is_request = name.endswith("Req")
+            events.append(
+                Event(
+                    ts=ts,
+                    kind=Kind.CALL if is_request else Kind.CALL_RESULT,
+                    # The log is written by whichever end we captured, so what
+                    # it decoded is what it received.
+                    # 日志由被抓的那一端产生，它解码的就是它收到的。
+                    direction=Direction.IN if inbound else Direction.OUT,
+                    action=name,
+                    uid=name[:-3],  # drop Req/Res — the bare name is the pairing key
+                    payload=payload if isinstance(payload, dict) else {},
+                    raw=line.rstrip("\n"),
+                    line_no=n,
+                )
             )
-        )
     return events
 
 

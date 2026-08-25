@@ -143,6 +143,101 @@ def r006_illegal_state_transitions(events: list[Event], cfg: dict) -> list[Findi
     return out
 
 
+def _phys(value) -> float | None:
+    """An ISO 15118 PhysicalValue as a plain number.
+    把 ISO 15118 的 PhysicalValue 变成普通数字。
+
+    Every physical quantity on the wire is `Value * 10**Multiplier` — there are
+    no floats in EXI, which is exactly why the multiplier exists. Reading Value
+    alone turns the car's 32 A into 32000 A.
+    线路上每个物理量都是 `Value * 10**Multiplier` —— EXI 里没有浮点数，
+    这正是 multiplier 存在的理由。只读 Value 会把车报的 32 A 读成 32000 A。
+    """
+    if not isinstance(value, dict) or "Value" not in value:
+        return None
+    try:
+        return float(value["Value"]) * (10 ** int(value.get("Multiplier", 0)))
+    except (TypeError, ValueError):
+        return None
+
+
+def r007_power_limit_mismatch(events: list[Event], cfg: dict) -> list[Finding]:
+    """The station states its ceiling twice and the two disagree.
+    桩把自己的上限说了两遍，而两遍对不上。
+
+    ChargeParameterDiscoveryRes carries PMax inside the SAScheduleList and
+    EVSEMaxCurrent inside AC_EVSEChargeParameter. ISO 15118-2 sets no precedence
+    between them and nothing in the protocol notices when they contradict each
+    other, so a car is free to believe whichever it happens to read. In the
+    captured sessions it reads PMax and ignores the current entirely — which
+    means the station's current limit is a suggestion, and the only thing left
+    protecting the feeder is the upstream breaker.
+    ChargeParameterDiscoveryRes 里，PMax 在 SAScheduleList 中，EVSEMaxCurrent 在
+    AC_EVSEChargeParameter 中。ISO 15118-2 没有规定谁优先，协议也不会在两者矛盾时
+    报错，所以车爱信哪个信哪个。在抓到的会话里它只读 PMax、完全忽略电流 ——
+    也就是说桩的电流限值只是个建议，剩下的唯一保护是上级断路器。
+
+    Whole-session rule: the phase count comes from the request, the limits from
+    the response, so no single log line can express it.
+    跨消息规则: 相数来自请求，限值来自响应，任何单独一行日志都表达不了。
+    """
+    out: list[Finding] = []
+
+    # Line voltage on three phases, so P = sqrt(3) * U * I. Single phase is
+    # P = U * I. The mode is only ever stated in the request.
+    # 三相报的是线电压，所以 P = sqrt(3) * U * I；单相是 P = U * I。
+    # 能量传输模式只在请求里出现过。
+    factor = None
+    for e in events:
+        if e.action == "ChargeParameterDiscoveryReq":
+            mode = e.payload.get("RequestedEnergyTransferMode", "")
+            factor = 3 ** 0.5 if "three_phase" in mode else 1.0
+            break
+    if factor is None:
+        return out
+
+    tolerance = cfg.get("power_tolerance", 0.1)
+    for e in events:
+        if e.action != "ChargeParameterDiscoveryRes":
+            continue
+
+        # SAScheduleList is minOccurs="0" in the XSD, and a DC session has no
+        # AC_EVSEChargeParameter at all. Missing data is not a finding.
+        # SAScheduleList 在 XSD 里是 minOccurs="0"，直流会话则根本没有
+        # AC_EVSEChargeParameter。数据缺失不算问题。
+        tuples = (e.payload.get("SAScheduleList") or {}).get("SAScheduleTuple") or []
+        ac_params = e.payload.get("AC_EVSEChargeParameter") or {}
+        if not tuples or not ac_params:
+            continue
+        entries = (tuples[0].get("PMaxSchedule") or {}).get("PMaxScheduleEntry") or []
+        if not entries:
+            continue
+
+        scheduled = _phys(entries[0].get("PMax"))
+        voltage = _phys(ac_params.get("EVSENominalVoltage"))
+        current = _phys(ac_params.get("EVSEMaxCurrent"))
+        if None in (scheduled, voltage, current) or scheduled <= 0:
+            continue
+
+        implied = factor * voltage * current
+        # Relative to the larger of the two, so the direction of the mismatch
+        # does not change the verdict.
+        # 除以两者中较大的那个，这样谁大谁小不影响判定。
+        if abs(scheduled - implied) / max(scheduled, implied) > tolerance:
+            out.append(
+                Finding(
+                    "R007",
+                    "error",
+                    f"station advertises PMax={scheduled:.0f} W but "
+                    f"EVSEMaxCurrent={current:.0f} A at {voltage:.0f} V "
+                    f"implies {implied:.0f} W",
+                    line_no=e.line_no,
+                    ts=e.ts,
+                )
+            )
+    return out
+
+
 RULES = [
     r001_unanswered_calls,
     r002_call_errors,
@@ -150,6 +245,7 @@ RULES = [
     r004_slow_responses,
     r005_heartbeat_gaps,
     r006_illegal_state_transitions,
+    r007_power_limit_mismatch,
 ]
 
 
@@ -182,7 +278,7 @@ _MIN = _dt.min
 # ----------------------------------------------------------------------
 # TODO(you) — project 04, day 11
 # ----------------------------------------------------------------------
-# R007  Out-of-order V2G session: compare the observed message order against
+# R010  Out-of-order V2G session: compare the observed message order against
 #       parsers.v2g_text.ISO15118_2_DC_ORDER and report the first deviation.
 #       V2G 会话乱序: 把观察到的消息顺序与 ISO15118_2_DC_ORDER 比对，报告第一处偏差。
 # R008  Truncated session: a session that reaches CurrentDemand but never

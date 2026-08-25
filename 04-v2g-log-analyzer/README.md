@@ -125,10 +125,34 @@ it is diagnosing.** Say this out loud — it is a real engineering judgement.
       confirm the analyzer catches it. / 故意搞坏项目 01，确认分析器能抓到。
 
 ### Day 11 — the V2G parser / V2G 解析器
-- [ ] Run the ISO 15118 SECC + EVCC from project 03 and save the log.
-- [ ] Fix the regex in `parsers/v2g_text.py` to match what it actually prints.
+- [x] Run the ISO 15118 SECC + EVCC from project 03 and save the log.
+      `samples/v2g_session.log` (healthy) and `samples/v2g_session_fault.log`
+      (5 A injected) — both captured in project 03, kept here so the tests are
+      self-contained.
+      两份日志都来自项目 03，拷进这里让测试自包含。
+- [x] Fix the regex in `parsers/v2g_text.py` to match what it actually prints.
       根据它实际打印的内容修正正则。
-- [ ] Implement **R007 (out-of-order session)** and **R008 (truncated session)**.
+      It targets the `exi_codec` lines, not the shorter `comm_session` ones,
+      because only those carry the decoded payload — and `payload` is what a
+      rule needs. 162 lines → 40 matches → 38 events, after filtering the
+      xmldsig namespace and the `SalesTariff` fragment encoded for signing.
+      盯的是 `exi_codec` 行而非更短的 `comm_session` 行，因为只有它们带载荷。
+      162 行 → 匹配 40 → 过滤掉 xmldsig 和为签名单独编码的 SalesTariff → 38 个 Event。
+- [x] Implement **R007** — the station advertises its ceiling twice, as `PMax`
+      in the `SAScheduleList` and as `EVSEMaxCurrent` in
+      `AC_EVSEChargeParameter`, and ISO 15118-2 sets no precedence between them.
+      Compares `PMax` against `EVSEMaxCurrent × EVSENominalVoltage × √3`.
+      A whole-session rule: the phase count is in the request, the limits in the
+      response.
+      桩把上限说了两遍而规范没规定谁优先。跨消息规则: 相数在请求里，限值在响应里。
+
+      Fires on **both** captures — 32 A implies 22 170 W against a scheduled
+      11 000 W, so the contradiction predates the injected fault. The healthy
+      log is kept as a test case precisely so the rule cannot be fitted to the
+      broken one.
+      两份日志**都**报警 —— 矛盾在注入故障之前就存在。正常日志留作测试用例，
+      正是为了防止规则被"照着故障日志凑出来"。
+- [ ] Implement **R008 (truncated session)** and **R010 (out-of-order session)**.
 - [ ] Extract `ResponseCode` from each `...Res` — anything not `OK_*` is a finding.
 
 ### Day 12 — make it presentable / 让它可展示

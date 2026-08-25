@@ -126,7 +126,7 @@ Full breakdown: [`docs/14-DAY-PLAN.md`](docs/14-DAY-PLAN.md)
 - [x] Day 8 — ISO 15118 SECC + EVCC session completes
 - [x] Day 9 — pcap captured, one EXI message decoded by hand
 - [x] Day 10 — fault injected, log captured
-- [ ] Day 11 — `v2g_text.py` parser written, R007/R008 implemented
+- [x] Day 11 — `v2g_text.py` parser written, R007 implemented
 - [ ] Day 12 — 📄 analysis report finished
 - [ ] Day 13 — READMEs polished, screenshots in place
 - [ ] Day 14 — talk through every project out loud, twice
