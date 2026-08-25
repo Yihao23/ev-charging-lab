@@ -187,7 +187,25 @@ it is diagnosing.** Say this out loud — it is a real engineering judgement.
 
 ### Day 12 — make it presentable / 让它可展示
 - [ ] Implement the SVG current plot (`render.py` TODO 1).
-- [ ] Implement `--format html` (`render.py` TODO 2).
+- [x] Implement `--format html` (`render.py` TODO 2).
+      One self-contained file — inline CSS, no CDN, no stylesheet, no script —
+      because a report that needs the internet is not an attachment, it is a
+      link that rots. A test asserts the absence of `http://`, `https://`,
+      `<script src` and `<link `, so it cannot regress into needing a network.
+      单个自包含文件 —— 样式内联，没有 CDN、外部样式表或脚本 ——
+      因为一份需要联网的报告不是附件，是一条会失效的链接。有测试断言这四种
+      外部引用都不存在，防止它退化成需要网络。
+
+      The Mermaid diagram is embedded as source in a `<details>` block rather
+      than rendered, for the same reason. Log content goes through
+      `html.escape`, because it is untrusted input and markup in it must stay
+      text.
+      Mermaid 图以源码形式放在 `<details>` 里而不渲染，同理。日志内容经过
+      `html.escape` —— 它是外部输入，里面的标签必须保持为文本。
+
+      Generated: [`report-example.html`](samples/report-example.html) (OCPP),
+      [`report-example-v2g.html`](samples/report-example-v2g.html),
+      [`report-example-v2g-truncated.html`](samples/report-example-v2g-truncated.html).
 - [x] Generate one report from a real broken session and commit it as
       `samples/report-example.md`. **This file is your interview artefact.**
       Two of them now: [`report-example.md`](samples/report-example.md) from the

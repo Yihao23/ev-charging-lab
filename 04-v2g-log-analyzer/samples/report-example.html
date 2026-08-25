@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Session report — samples/ocpp_session_faulty.log</title>
+<style>
+  :root { --err:#b3261e; --warn:#8a6100; --ok:#1b6b3a; --line:#d7d7db; --muted:#5f6368; }
+  body { font:14px/1.55 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+         margin:0; padding:2rem 1.5rem; color:#1b1b1f; background:#fff; }
+  main { max-width:60rem; margin:0 auto; }
+  h1 { font-size:1.35rem; margin:0 0 .25rem; }
+  h2 { font-size:1rem; margin:2rem 0 .6rem; text-transform:uppercase;
+       letter-spacing:.06em; color:var(--muted); }
+  .src { color:var(--muted); font-family:ui-monospace,Menlo,Consolas,monospace; }
+  table { border-collapse:collapse; width:100%; font-size:.9rem; }
+  th,td { text-align:left; padding:.4rem .6rem; border-bottom:1px solid var(--line);
+          vertical-align:top; }
+  th { font-weight:600; color:var(--muted); font-size:.8rem; text-transform:uppercase;
+       letter-spacing:.04em; }
+  td.num, th.num { text-align:right; font-variant-numeric:tabular-nums; }
+  .cards { display:flex; flex-wrap:wrap; gap:.75rem; margin:.5rem 0 0; }
+  .card { border:1px solid var(--line); border-radius:.5rem; padding:.6rem .9rem; min-width:7rem; }
+  .card b { display:block; font-size:1.5rem; font-variant-numeric:tabular-nums; }
+  .card span { color:var(--muted); font-size:.78rem; }
+  .card.err b { color:var(--err); }
+  .card.warn b { color:var(--warn); }
+  .sev { font-weight:600; font-size:.78rem; letter-spacing:.04em; }
+  .sev.error { color:var(--err); }
+  .sev.warning { color:var(--warn); }
+  .none { color:var(--ok); }
+  code,pre { font-family:ui-monospace,Menlo,Consolas,monospace; }
+  pre { background:#f6f6f7; border:1px solid var(--line); border-radius:.5rem;
+        padding:.8rem; overflow-x:auto; font-size:.82rem; }
+  details { margin-top:.6rem; }
+  summary { cursor:pointer; color:var(--muted); }
+  footer { margin-top:2.5rem; color:var(--muted); font-size:.8rem; }
+</style></head><body><main>
+<h1>Session report</h1>
+<p class="src">samples/ocpp_session_faulty.log &middot; ChargePoint &rarr; CSMS</p>
+
+<h2>Summary / 摘要</h2>
+<div class="cards">
+  <div class="card"><b>19</b><span>frames / 帧</span></div>
+  <div class="card"><b>10</b><span>requests / 请求</span></div>
+  <div class="card"><b>169.9s</b><span>duration / 时长</span></div>
+  <div class="card err"><b>3</b><span>errors / 错误</span></div>
+  <div class="card warn"><b>4</b><span>warnings / 警告</span></div>
+</div>
+
+<h2>Findings / 问题清单</h2>
+<table><tr><th>Rule</th><th>Severity</th><th class='num'>Line</th><th>Message</th></tr><tr><td><code>R006</code></td><td><span class='sev error'>ERROR</span></td><td class='num'>9</td><td>connector 1: illegal transition Available -&gt; Charging</td></tr><tr><td><code>R003</code></td><td><span class='sev warning'>WARNING</span></td><td class='num'>12</td><td>response carries idTagInfo.status=Invalid</td></tr><tr><td><code>R003</code></td><td><span class='sev warning'>WARNING</span></td><td class='num'>14</td><td>response carries status=Rejected</td></tr><tr><td><code>R004</code></td><td><span class='sev warning'>WARNING</span></td><td class='num'>15</td><td>MeterValues took 5500 ms (&gt; 2000 ms)</td></tr><tr><td><code>R002</code></td><td><span class='sev error'>ERROR</span></td><td class='num'>18</td><td>CALLERROR NotSupported: vendorId is not registered</td></tr><tr><td><code>R005</code></td><td><span class='sev warning'>WARNING</span></td><td class='num'>21</td><td>heartbeat gap of 135s (interval is 30s)</td></tr><tr><td><code>R001</code></td><td><span class='sev error'>ERROR</span></td><td class='num'>23</td><td>StopTransaction (uid=a9) was never answered</td></tr></table>
+
+<h2>Timeline / 时间线</h2>
+<table><tr><th class="num">#</th><th class="num">Time</th><th>Dir</th>
+<th>Message</th><th class="num">Latency</th></tr><tr><td class='num'>1</td><td class='num'>0.00s</td><td>&rarr;</td><td>BootNotification</td><td class='num'>40 ms</td></tr><tr><td class='num'>2</td><td class='num'>0.04s</td><td>&larr;</td><td>CALLRESULT</td><td class='num'></td></tr><tr><td class='num'>3</td><td class='num'>0.05s</td><td>&rarr;</td><td>StatusNotification</td><td class='num'>10 ms</td></tr><tr><td class='num'>4</td><td class='num'>0.06s</td><td>&larr;</td><td>CALLRESULT</td><td class='num'></td></tr><tr><td class='num'>5</td><td class='num'>1.90s</td><td>&rarr;</td><td>StatusNotification</td><td class='num'>10 ms</td></tr><tr><td class='num'>6</td><td class='num'>1.91s</td><td>&larr;</td><td>CALLRESULT</td><td class='num'></td></tr><tr><td class='num'>7</td><td class='num'>2.90s</td><td>&rarr;</td><td>Authorize</td><td class='num'>20 ms</td></tr><tr><td class='num'>8</td><td class='num'>2.92s</td><td>&larr;</td><td>CALLRESULT</td><td class='num'></td></tr><tr><td class='num'>9</td><td class='num'>3.90s</td><td>&larr;</td><td>SetChargingProfile</td><td class='num'>5 ms</td></tr><tr><td class='num'>10</td><td class='num'>3.90s</td><td>&rarr;</td><td>CALLRESULT</td><td class='num'></td></tr><tr><td class='num'>11</td><td class='num'>5.90s</td><td>&rarr;</td><td>MeterValues</td><td class='num'>5500 ms</td></tr><tr><td class='num'>12</td><td class='num'>11.40s</td><td>&larr;</td><td>CALLRESULT</td><td class='num'></td></tr><tr><td class='num'>13</td><td class='num'>11.90s</td><td>&rarr;</td><td>DataTransfer</td><td class='num'>50 ms</td></tr><tr><td class='num'>14</td><td class='num'>11.95s</td><td>&larr;</td><td>CALLERROR</td><td class='num'></td></tr><tr><td class='num'>15</td><td class='num'>29.90s</td><td>&rarr;</td><td>Heartbeat</td><td class='num'>10 ms</td></tr><tr><td class='num'>16</td><td class='num'>29.91s</td><td>&larr;</td><td>CALLRESULT</td><td class='num'></td></tr><tr><td class='num'>17</td><td class='num'>164.90s</td><td>&rarr;</td><td>Heartbeat</td><td class='num'>10 ms</td></tr><tr><td class='num'>18</td><td class='num'>164.91s</td><td>&larr;</td><td>CALLRESULT</td><td class='num'></td></tr><tr><td class='num'>19</td><td class='num'>169.90s</td><td>&rarr;</td><td>StopTransaction</td><td class='num'></td></tr></table>
+
+<details><summary>Sequence diagram source (Mermaid) / 时序图源码</summary>
+<pre>sequenceDiagram
+    autonumber
+    participant A as ChargePoint
+    participant B as CSMS
+    A-&gt;&gt;B: BootNotification (40 ms)
+    B--&gt;&gt;A: status=Accepted
+    A-&gt;&gt;B: StatusNotification (10 ms)
+    B--&gt;&gt;A: ok
+    A-&gt;&gt;B: StatusNotification (10 ms)
+    B--&gt;&gt;A: ok
+    A-&gt;&gt;B: Authorize (20 ms)
+    B--&gt;&gt;A: idTagInfo=…
+    B-&gt;&gt;A: SetChargingProfile (5 ms)
+    A--&gt;&gt;B: status=Rejected
+    A-&gt;&gt;B: MeterValues (5500 ms)
+    B--&gt;&gt;A: ok
+    A-&gt;&gt;B: DataTransfer (50 ms)
+    B-xA: ERROR NotSupported
+    A-&gt;&gt;B: Heartbeat (10 ms)
+    B--&gt;&gt;A: currentTime=2026-08-19T09:00:30.010000+00:00
+    A-&gt;&gt;B: Heartbeat (10 ms)
+    B--&gt;&gt;A: currentTime=2026-08-19T09:02:45.010000+00:00
+    A-&gt;&gt;B: StopTransaction</pre></details>
+
+<footer>Generated by v2ganalyzer &middot; standard library only, no network.</footer>
+</main></body></html>

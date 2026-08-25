@@ -9,7 +9,7 @@ from pathlib import Path
 
 from v2ganalyzer import render, rules
 from v2ganalyzer.correlate import correlate
-from v2ganalyzer.models import Direction, Kind, Session
+from v2ganalyzer.models import Direction, Finding, Kind, Session
 from v2ganalyzer.parsers import autodetect, ocpp_json
 
 SAMPLES = Path(__file__).resolve().parent.parent / "samples"
@@ -434,3 +434,56 @@ class TestR010OutOfOrder(unittest.TestCase):
         self.assertEqual(f.severity, "error")
         self.assertIn("ServiceDiscovery", f.message)
         self.assertIn("Authorization", f.message)
+
+
+class TestHtmlRender(unittest.TestCase):
+    """One file you can attach to an email. Interviewers do not run your code.
+    一个能直接附在邮件里的文件。面试官不会跑你的代码。
+    """
+
+    def _session(self, name="v2g_session_fault.log"):
+        from v2ganalyzer.cli import analyse
+        return analyse(SAMPLES / name, 2000.0)
+
+    def test_is_a_complete_document(self):
+        out = render.html(self._session())
+        self.assertTrue(out.startswith("<!DOCTYPE html>"))
+        self.assertIn("<html", out)
+        self.assertIn("</html>", out)
+
+    def test_is_self_contained(self):
+        """No CDN, no external stylesheet, no fetch. It has to open on a laptop
+        with no network, from an attachment.
+        没有 CDN、没有外部样式表、没有网络请求。它得能在断网的笔记本上、
+        从一个附件里直接打开。"""
+        out = render.html(self._session())
+        for forbidden in ("http://", "https://", "<script src", "<link "):
+            with self.subTest(forbidden=forbidden):
+                self.assertNotIn(forbidden, out)
+        self.assertIn("<style>", out)
+
+    def test_carries_the_findings(self):
+        out = render.html(self._session())
+        self.assertIn("R007", out)
+        self.assertIn("EVSEMaxCurrent=5 A", out)
+
+    def test_escapes_html_in_payloads(self):
+        """Log content is untrusted input. A message containing markup must not
+        become markup.
+        日志内容是外部输入。消息里的尖括号不能变成标签。"""
+        session = self._session()
+        session.findings.append(
+            Finding("R999", "error", "<script>alert(1)</script>", line_no=1))
+        out = render.html(session)
+        self.assertNotIn("<script>alert(1)</script>", out)
+        self.assertIn("&lt;script&gt;", out)
+
+    def test_cli_accepts_the_format(self):
+        import tempfile
+        from v2ganalyzer.cli import main
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "report.html"
+            rc = main([str(SAMPLES / "v2g_session_fault.log"),
+                       "--format", "html", "-o", str(target)])
+            self.assertEqual(rc, 0)
+            self.assertIn("<!DOCTYPE html>", target.read_text())

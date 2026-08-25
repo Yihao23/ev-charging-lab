@@ -1,5 +1,5 @@
-"""Renderers: Markdown report, Mermaid sequence diagram, JSON.
-渲染器: Markdown 报告、Mermaid 时序图、JSON。
+"""Renderers: Markdown report, Mermaid sequence diagram, JSON, HTML.
+渲染器: Markdown 报告、Mermaid 时序图、JSON、HTML。
 
 The Mermaid output is the point. A sequence diagram generated from a real log
 is the artefact that makes an interviewer lean forward.
@@ -8,6 +8,7 @@ Mermaid 输出是重点。从真实日志自动生成的时序图，是能让面
 
 from __future__ import annotations
 
+import html as _html
 import json
 from dataclasses import asdict
 
@@ -134,6 +135,120 @@ def _summarise(payload: dict) -> str:
         return "ok"
     first = next(iter(payload.items()))
     return f"{first[0]}=…"
+
+
+# Inlined rather than linked, because the whole point of the HTML output is that
+# it survives being an email attachment on a laptop with no network.
+# 样式内联而不是外链，因为 HTML 输出的全部意义就是: 它得能作为邮件附件，
+# 在一台断网的笔记本上打开。
+_CSS = """
+  :root { --err:#b3261e; --warn:#8a6100; --ok:#1b6b3a; --line:#d7d7db; --muted:#5f6368; }
+  body { font:14px/1.55 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+         margin:0; padding:2rem 1.5rem; color:#1b1b1f; background:#fff; }
+  main { max-width:60rem; margin:0 auto; }
+  h1 { font-size:1.35rem; margin:0 0 .25rem; }
+  h2 { font-size:1rem; margin:2rem 0 .6rem; text-transform:uppercase;
+       letter-spacing:.06em; color:var(--muted); }
+  .src { color:var(--muted); font-family:ui-monospace,Menlo,Consolas,monospace; }
+  table { border-collapse:collapse; width:100%; font-size:.9rem; }
+  th,td { text-align:left; padding:.4rem .6rem; border-bottom:1px solid var(--line);
+          vertical-align:top; }
+  th { font-weight:600; color:var(--muted); font-size:.8rem; text-transform:uppercase;
+       letter-spacing:.04em; }
+  td.num, th.num { text-align:right; font-variant-numeric:tabular-nums; }
+  .cards { display:flex; flex-wrap:wrap; gap:.75rem; margin:.5rem 0 0; }
+  .card { border:1px solid var(--line); border-radius:.5rem; padding:.6rem .9rem; min-width:7rem; }
+  .card b { display:block; font-size:1.5rem; font-variant-numeric:tabular-nums; }
+  .card span { color:var(--muted); font-size:.78rem; }
+  .card.err b { color:var(--err); }
+  .card.warn b { color:var(--warn); }
+  .sev { font-weight:600; font-size:.78rem; letter-spacing:.04em; }
+  .sev.error { color:var(--err); }
+  .sev.warning { color:var(--warn); }
+  .none { color:var(--ok); }
+  code,pre { font-family:ui-monospace,Menlo,Consolas,monospace; }
+  pre { background:#f6f6f7; border:1px solid var(--line); border-radius:.5rem;
+        padding:.8rem; overflow-x:auto; font-size:.82rem; }
+  details { margin-top:.6rem; }
+  summary { cursor:pointer; color:var(--muted); }
+  footer { margin-top:2.5rem; color:var(--muted); font-size:.8rem; }
+"""
+
+
+def html(session: Session, role: str = "cp") -> str:
+    """One self-contained file: no CDN, no stylesheet, no script.
+    一个自包含的文件: 没有 CDN、没有外部样式表、没有脚本。
+
+    The Mermaid diagram is embedded as its source rather than rendered, because
+    rendering it would mean loading a library from the network — and a report
+    that needs the internet is not an attachment, it is a link that rots.
+    Mermaid 图以源码形式嵌入而不渲染，因为渲染就得从网上加载库 ——
+    而一份需要联网的报告不是附件，是一条会失效的链接。
+    """
+    errors = [f for f in session.findings if f.severity == "error"]
+    warnings = [f for f in session.findings if f.severity == "warning"]
+    me, peer = _peer_names(role)
+
+    if session.findings:
+        rows = "".join(
+            f"<tr><td><code>{_h(f.rule)}</code></td>"
+            f"<td><span class='sev {_h(f.severity)}'>{_h(f.severity.upper())}</span></td>"
+            f"<td class='num'>{f.line_no or ''}</td>"
+            f"<td>{_h(f.message)}</td></tr>"
+            for f in session.findings
+        )
+        findings = ("<table><tr><th>Rule</th><th>Severity</th><th class='num'>Line</th>"
+                    f"<th>Message</th></tr>{rows}</table>")
+    else:
+        findings = "<p class='none'>No findings. 没有发现问题。</p>"
+
+    start = session.events[0].ts if session.events else None
+    timeline = "".join(
+        f"<tr><td class='num'>{n}</td>"
+        f"<td class='num'>{(e.ts - start).total_seconds():.2f}s</td>"
+        f"<td>{'&rarr;' if e.direction is Direction.OUT else '&larr;'}</td>"
+        f"<td>{_h(e.label)}</td>"
+        f"<td class='num'>{f'{e.latency_ms:.0f} ms' if e.latency_ms is not None else ''}</td>"
+        f"</tr>"
+        for n, e in enumerate(session.events, start=1)
+    )
+
+    return f"""<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Session report — {_h(session.source)}</title>
+<style>{_CSS}</style></head><body><main>
+<h1>Session report</h1>
+<p class="src">{_h(session.source)} &middot; {_h(me)} &rarr; {_h(peer)}</p>
+
+<h2>Summary / 摘要</h2>
+<div class="cards">
+  <div class="card"><b>{len(session.events)}</b><span>frames / 帧</span></div>
+  <div class="card"><b>{len(session.calls)}</b><span>requests / 请求</span></div>
+  <div class="card"><b>{session.duration_s:.1f}s</b><span>duration / 时长</span></div>
+  <div class="card err"><b>{len(errors)}</b><span>errors / 错误</span></div>
+  <div class="card warn"><b>{len(warnings)}</b><span>warnings / 警告</span></div>
+</div>
+
+<h2>Findings / 问题清单</h2>
+{findings}
+
+<h2>Timeline / 时间线</h2>
+<table><tr><th class="num">#</th><th class="num">Time</th><th>Dir</th>
+<th>Message</th><th class="num">Latency</th></tr>{timeline}</table>
+
+<details><summary>Sequence diagram source (Mermaid) / 时序图源码</summary>
+<pre>{_h(mermaid(session, role))}</pre></details>
+
+<footer>Generated by v2ganalyzer &middot; standard library only, no network.</footer>
+</main></body></html>
+"""
+
+
+def _h(text) -> str:
+    """Log content is untrusted input; markup in it must stay text.
+    日志内容是外部输入，里面的标签必须保持为文本。"""
+    return _html.escape(str(text), quote=True)
 
 
 def _esc(text: str) -> str:

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Session report — samples/v2g_session_fault.log</title>
+<style>
+  :root { --err:#b3261e; --warn:#8a6100; --ok:#1b6b3a; --line:#d7d7db; --muted:#5f6368; }
+  body { font:14px/1.55 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+         margin:0; padding:2rem 1.5rem; color:#1b1b1f; background:#fff; }
+  main { max-width:60rem; margin:0 auto; }
+  h1 { font-size:1.35rem; margin:0 0 .25rem; }
+  h2 { font-size:1rem; margin:2rem 0 .6rem; text-transform:uppercase;
+       letter-spacing:.06em; color:var(--muted); }
+  .src { color:var(--muted); font-family:ui-monospace,Menlo,Consolas,monospace; }
+  table { border-collapse:collapse; width:100%; font-size:.9rem; }
+  th,td { text-align:left; padding:.4rem .6rem; border-bottom:1px solid var(--line);
+          vertical-align:top; }
+  th { font-weight:600; color:var(--muted); font-size:.8rem; text-transform:uppercase;
+       letter-spacing:.04em; }
+  td.num, th.num { text-align:right; font-variant-numeric:tabular-nums; }
+  .cards { display:flex; flex-wrap:wrap; gap:.75rem; margin:.5rem 0 0; }
+  .card { border:1px solid var(--line); border-radius:.5rem; padding:.6rem .9rem; min-width:7rem; }
+  .card b { display:block; font-size:1.5rem; font-variant-numeric:tabular-nums; }
+  .card span { color:var(--muted); font-size:.78rem; }
+  .card.err b { color:var(--err); }
+  .card.warn b { color:var(--warn); }
+  .sev { font-weight:600; font-size:.78rem; letter-spacing:.04em; }
+  .sev.error { color:var(--err); }
+  .sev.warning { color:var(--warn); }
+  .none { color:var(--ok); }
+  code,pre { font-family:ui-monospace,Menlo,Consolas,monospace; }
+  pre { background:#f6f6f7; border:1px solid var(--line); border-radius:.5rem;
+        padding:.8rem; overflow-x:auto; font-size:.82rem; }
+  details { margin-top:.6rem; }
+  summary { cursor:pointer; color:var(--muted); }
+  footer { margin-top:2.5rem; color:var(--muted); font-size:.8rem; }
+</style></head><body><main>
+<h1>Session report</h1>
+<p class="src">samples/v2g_session_fault.log &middot; ChargePoint &rarr; CSMS</p>
+
+<h2>Summary / 摘要</h2>
+<div class="cards">
+  <div class="card"><b>38</b><span>frames / 帧</span></div>
+  <div class="card"><b>19</b><span>requests / 请求</span></div>
+  <div class="card"><b>1.8s</b><span>duration / 时长</span></div>
+  <div class="card err"><b>1</b><span>errors / 错误</span></div>
+  <div class="card warn"><b>0</b><span>warnings / 警告</span></div>
+</div>
+
+<h2>Findings / 问题清单</h2>
+<table><tr><th>Rule</th><th>Severity</th><th class='num'>Line</th><th>Message</th></tr><tr><td><code>R007</code></td><td><span class='sev error'>ERROR</span></td><td class='num'>75</td><td>station advertises PMax=11000 W but EVSEMaxCurrent=5 A at 400 V implies 3464 W</td></tr></table>
+
+<h2>Timeline / 时间线</h2>
+<table><tr><th class="num">#</th><th class="num">Time</th><th>Dir</th>
+<th>Message</th><th class="num">Latency</th></tr><tr><td class='num'>1</td><td class='num'>0.00s</td><td>&larr;</td><td>supportedAppProtocolReq</td><td class='num'>0 ms</td></tr><tr><td class='num'>2</td><td class='num'>0.00s</td><td>&rarr;</td><td>supportedAppProtocolRes</td><td class='num'></td></tr><tr><td class='num'>3</td><td class='num'>0.17s</td><td>&larr;</td><td>SessionSetupReq</td><td class='num'>0 ms</td></tr><tr><td class='num'>4</td><td class='num'>0.17s</td><td>&rarr;</td><td>SessionSetupRes</td><td class='num'></td></tr><tr><td class='num'>5</td><td class='num'>0.30s</td><td>&larr;</td><td>ServiceDiscoveryReq</td><td class='num'>1 ms</td></tr><tr><td class='num'>6</td><td class='num'>0.30s</td><td>&rarr;</td><td>ServiceDiscoveryRes</td><td class='num'></td></tr><tr><td class='num'>7</td><td class='num'>0.41s</td><td>&larr;</td><td>PaymentServiceSelectionReq</td><td class='num'>0 ms</td></tr><tr><td class='num'>8</td><td class='num'>0.41s</td><td>&rarr;</td><td>PaymentServiceSelectionRes</td><td class='num'></td></tr><tr><td class='num'>9</td><td class='num'>0.53s</td><td>&larr;</td><td>AuthorizationReq</td><td class='num'>0 ms</td></tr><tr><td class='num'>10</td><td class='num'>0.53s</td><td>&rarr;</td><td>AuthorizationRes</td><td class='num'></td></tr><tr><td class='num'>11</td><td class='num'>0.62s</td><td>&larr;</td><td>ChargeParameterDiscoveryReq</td><td class='num'>64 ms</td></tr><tr><td class='num'>12</td><td class='num'>0.69s</td><td>&rarr;</td><td>ChargeParameterDiscoveryRes</td><td class='num'></td></tr><tr><td class='num'>13</td><td class='num'>0.79s</td><td>&larr;</td><td>PowerDeliveryReq</td><td class='num'>1 ms</td></tr><tr><td class='num'>14</td><td class='num'>0.79s</td><td>&rarr;</td><td>PowerDeliveryRes</td><td class='num'></td></tr><tr><td class='num'>15</td><td class='num'>0.88s</td><td>&larr;</td><td>ChargingStatusReq</td><td class='num'>1 ms</td></tr><tr><td class='num'>16</td><td class='num'>0.88s</td><td>&rarr;</td><td>ChargingStatusRes</td><td class='num'></td></tr><tr><td class='num'>17</td><td class='num'>1.01s</td><td>&larr;</td><td>ChargingStatusReq</td><td class='num'>1 ms</td></tr><tr><td class='num'>18</td><td class='num'>1.01s</td><td>&rarr;</td><td>ChargingStatusRes</td><td class='num'></td></tr><tr><td class='num'>19</td><td class='num'>1.12s</td><td>&larr;</td><td>ChargingStatusReq</td><td class='num'>1 ms</td></tr><tr><td class='num'>20</td><td class='num'>1.12s</td><td>&rarr;</td><td>ChargingStatusRes</td><td class='num'></td></tr><tr><td class='num'>21</td><td class='num'>1.21s</td><td>&larr;</td><td>ChargingStatusReq</td><td class='num'>1 ms</td></tr><tr><td class='num'>22</td><td class='num'>1.21s</td><td>&rarr;</td><td>ChargingStatusRes</td><td class='num'></td></tr><tr><td class='num'>23</td><td class='num'>1.31s</td><td>&larr;</td><td>ChargingStatusReq</td><td class='num'>0 ms</td></tr><tr><td class='num'>24</td><td class='num'>1.31s</td><td>&rarr;</td><td>ChargingStatusRes</td><td class='num'></td></tr><tr><td class='num'>25</td><td class='num'>1.40s</td><td>&larr;</td><td>ChargingStatusReq</td><td class='num'>1 ms</td></tr><tr><td class='num'>26</td><td class='num'>1.40s</td><td>&rarr;</td><td>ChargingStatusRes</td><td class='num'></td></tr><tr><td class='num'>27</td><td class='num'>1.48s</td><td>&larr;</td><td>ChargingStatusReq</td><td class='num'>0 ms</td></tr><tr><td class='num'>28</td><td class='num'>1.48s</td><td>&rarr;</td><td>ChargingStatusRes</td><td class='num'></td></tr><tr><td class='num'>29</td><td class='num'>1.56s</td><td>&larr;</td><td>ChargingStatusReq</td><td class='num'>1 ms</td></tr><tr><td class='num'>30</td><td class='num'>1.56s</td><td>&rarr;</td><td>ChargingStatusRes</td><td class='num'></td></tr><tr><td class='num'>31</td><td class='num'>1.65s</td><td>&larr;</td><td>ChargingStatusReq</td><td class='num'>1 ms</td></tr><tr><td class='num'>32</td><td class='num'>1.65s</td><td>&rarr;</td><td>ChargingStatusRes</td><td class='num'></td></tr><tr><td class='num'>33</td><td class='num'>1.73s</td><td>&larr;</td><td>ChargingStatusReq</td><td class='num'>0 ms</td></tr><tr><td class='num'>34</td><td class='num'>1.73s</td><td>&rarr;</td><td>ChargingStatusRes</td><td class='num'></td></tr><tr><td class='num'>35</td><td class='num'>1.79s</td><td>&larr;</td><td>PowerDeliveryReq</td><td class='num'>1 ms</td></tr><tr><td class='num'>36</td><td class='num'>1.79s</td><td>&rarr;</td><td>PowerDeliveryRes</td><td class='num'></td></tr><tr><td class='num'>37</td><td class='num'>1.84s</td><td>&larr;</td><td>SessionStopReq</td><td class='num'>1 ms</td></tr><tr><td class='num'>38</td><td class='num'>1.84s</td><td>&rarr;</td><td>SessionStopRes</td><td class='num'></td></tr></table>
+
+<details><summary>Sequence diagram source (Mermaid) / 时序图源码</summary>
+<pre>sequenceDiagram
+    autonumber
+    participant A as ChargePoint
+    participant B as CSMS
+    B-&gt;&gt;A: supportedAppProtocolReq (0 ms)
+    A--&gt;&gt;B: ResponseCode=…
+    B-&gt;&gt;A: SessionSetupReq (0 ms)
+    A--&gt;&gt;B: ResponseCode=…
+    B-&gt;&gt;A: ServiceDiscoveryReq (1 ms)
+    A--&gt;&gt;B: ResponseCode=…
+    B-&gt;&gt;A: PaymentServiceSelectionReq (0 ms)
+    A--&gt;&gt;B: ResponseCode=…
+    B-&gt;&gt;A: AuthorizationReq (0 ms)
+    A--&gt;&gt;B: ResponseCode=…
+    B-&gt;&gt;A: ChargeParameterDiscoveryReq (64 ms)
+    A--&gt;&gt;B: ResponseCode=…
+    B-&gt;&gt;A: PowerDeliveryReq (1 ms)
+    A--&gt;&gt;B: ResponseCode=…
+    B-&gt;&gt;A: ChargingStatusReq (1 ms)
+    A--&gt;&gt;B: ResponseCode=…
+    B-&gt;&gt;A: ChargingStatusReq (1 ms)
+    A--&gt;&gt;B: ResponseCode=…
+    B-&gt;&gt;A: ChargingStatusReq (1 ms)
+    A--&gt;&gt;B: ResponseCode=…
+    B-&gt;&gt;A: ChargingStatusReq (1 ms)
+    A--&gt;&gt;B: ResponseCode=…
+    B-&gt;&gt;A: ChargingStatusReq (0 ms)
+    A--&gt;&gt;B: ResponseCode=…
+    B-&gt;&gt;A: ChargingStatusReq (1 ms)
+    A--&gt;&gt;B: ResponseCode=…
+    B-&gt;&gt;A: ChargingStatusReq (0 ms)
+    A--&gt;&gt;B: ResponseCode=…
+    B-&gt;&gt;A: ChargingStatusReq (1 ms)
+    A--&gt;&gt;B: ResponseCode=…
+    B-&gt;&gt;A: ChargingStatusReq (1 ms)
+    A--&gt;&gt;B: ResponseCode=…
+    B-&gt;&gt;A: ChargingStatusReq (0 ms)
+    A--&gt;&gt;B: ResponseCode=…
+    B-&gt;&gt;A: PowerDeliveryReq (1 ms)
+    A--&gt;&gt;B: ResponseCode=…
+    B-&gt;&gt;A: SessionStopReq (1 ms)
+    A--&gt;&gt;B: ResponseCode=…</pre></details>
+
+<footer>Generated by v2ganalyzer &middot; standard library only, no network.</footer>
+</main></body></html>

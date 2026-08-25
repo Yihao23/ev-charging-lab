@@ -40,7 +40,7 @@ def main(argv: list[str] | None = None) -> int:
                     "diagram and a list of findings.",
     )
     ap.add_argument("logfile", type=Path)
-    ap.add_argument("--format", choices=["md", "mermaid", "json", "text"], default="text")
+    ap.add_argument("--format", choices=["md", "mermaid", "json", "text", "html"], default="text")
     ap.add_argument("--role", choices=["cp", "csms"], default="cp",
                     help="whose point of view the log was written from | 日志由哪一端产生")
     ap.add_argument("--slow-ms", type=float, default=2000.0,
@@ -56,6 +56,8 @@ def main(argv: list[str] | None = None) -> int:
         output = render.markdown(session, args.role)
     elif args.format == "mermaid":
         output = render.mermaid(session, args.role)
+    elif args.format == "html":
+        output = render.html(session, args.role)
     elif args.format == "json":
         output = render.as_json(session, args.role)
     else:
