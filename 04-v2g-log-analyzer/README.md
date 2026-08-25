@@ -152,7 +152,22 @@ it is diagnosing.** Say this out loud — it is a real engineering judgement.
       broken one.
       两份日志**都**报警 —— 矛盾在注入故障之前就存在。正常日志留作测试用例，
       正是为了防止规则被"照着故障日志凑出来"。
-- [ ] Implement **R008 (truncated session)** and **R010 (out-of-order session)**.
+- [x] Implement **R008 (truncated session)** and **R010 (out-of-order session)**.
+      R008 fires on [`samples/v2g_session_truncated.log`](samples/v2g_session_truncated.log),
+      the healthy capture cut after its last `ChargingStatus` — what a pulled
+      cable looks like in a log. It stays silent when charging never started,
+      because there the refusal is the finding and R011 already reports it.
+      R008 在截断样本上报警 —— 那是把正常抓包在最后一条 ChargingStatus 之后剪断，
+      拔枪在日志里就长这样。充电从未开始时它不报，因为那里的问题是"被拒"本身。
+
+      R010 checks **relative order only, never completeness**. The scaffold's
+      reference list was DC-shaped and initial-capitalised, so judging the AC
+      capture against it would have reported four skipped DC messages as
+      deviations. There are now two orders sharing a common prefix, picked by
+      which charging-loop message appeared, and optional messages may be absent.
+      R010 **只查相对顺序，不查完整性**。脚手架里的参考表是直流形状、首字母大写的，
+      拿它去判交流抓包会把四条合法跳过的直流消息报成偏差。现在是两张共享前缀的表，
+      按充电循环用的是哪条消息来选，可选消息缺席不算偏差。
 - [x] Extract `ResponseCode` from each `...Res` — anything not `OK_*` is a finding.
       **R011.** ISO 15118 has no CALLERROR frame, so `Kind.CALL_ERROR` never
       occurs in a V2G log and R002 can never fire on one; R003's `BAD_STATUS`

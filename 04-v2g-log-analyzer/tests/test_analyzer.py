@@ -352,3 +352,85 @@ class TestR011ResponseCode(unittest.TestCase):
             with self.subTest(log=log):
                 events = v2g_text.parse((SAMPLES / log).read_text().splitlines())
                 self.assertEqual([f for f in rules.run(events) if f.rule == "R011"], [])
+
+
+class TestR008TruncatedSession(unittest.TestCase):
+    """A session that started charging and never said goodbye. This is what the
+    driver reports as "the car stopped charging by itself" — they never say
+    "SessionStop was missing", so something has to make the translation.
+    一次开始充电却没有道别的会话。司机报的是"车自己停止充电了" ——
+    没人会说"缺了 SessionStop"，总得有人做这个翻译。
+    """
+
+    @staticmethod
+    def _r008(path):
+        events = v2g_text.parse((SAMPLES / path).read_text().splitlines())
+        return [f for f in rules.run(events) if f.rule == "R008"]
+
+    def test_flags_a_session_cut_off_mid_charge(self):
+        """samples/v2g_session_truncated.log is the healthy capture cut after the
+        last ChargingStatus — what a pulled cable looks like in the log.
+        截断样本是把正常抓包在最后一条 ChargingStatus 之后剪断 ——
+        拔枪在日志里就长这样。"""
+        (f,) = self._r008("v2g_session_truncated.log")
+        self.assertEqual(f.severity, "error")
+        self.assertIn("ChargingStatus", f.message)
+
+    def test_silent_on_a_session_that_stopped_properly(self):
+        for log in ("v2g_session.log", "v2g_session_fault.log"):
+            with self.subTest(log=log):
+                self.assertEqual(self._r008(log), [])
+
+    def test_silent_when_charging_never_started(self):
+        """A session that failed at Authorization never energised anything, so a
+        missing SessionStop is not the interesting fact — R011 already reports
+        the refusal.
+        在 Authorization 就失败的会话根本没有带电，缺 SessionStop 不是重点 ——
+        拒绝本身已经由 R011 报告了。"""
+        early = v2g_text.parse([V2G_REQ, V2G_RES])
+        self.assertEqual([f for f in rules.run(early) if f.rule == "R008"], [])
+
+
+class TestR010OutOfOrder(unittest.TestCase):
+    """ISO 15118-2 fixes the message sequence. A deviation means one end's state
+    machine is wrong, which on a real car shows up as "nothing happens when I
+    plug in" or "it restarts halfway".
+    ISO 15118-2 规定了消息顺序。偏差意味着某一端的状态机实现有问题，
+    在真车上表现为"插枪没反应"或"充到一半重来"。
+    """
+
+    @staticmethod
+    def _r010(events):
+        return [f for f in rules.run(events) if f.rule == "R010"]
+
+    def test_the_healthy_ac_session_is_not_flagged(self):
+        """The reference list is DC-shaped; an AC session legitimately skips
+        CableCheck, PreCharge, CurrentDemand and WeldingDetection. Judging it
+        against the DC order would report four deviations that are not.
+        参考表是直流形状的；交流会话合法地跳过那四条消息。
+        拿直流顺序去判会报出四处根本不存在的"偏差"。"""
+        events = v2g_text.parse((SAMPLES / "v2g_session.log").read_text().splitlines())
+        self.assertEqual(self._r010(events), [])
+
+    def test_optional_messages_may_be_absent(self):
+        """ServiceDetail and PaymentDetails are optional. Absence is not a
+        deviation — only wrong *relative* order is.
+        ServiceDetail 和 PaymentDetails 是可选的。缺席不算偏差，
+        只有**相对顺序**错了才算。"""
+        events = v2g_text.parse((SAMPLES / "v2g_session_fault.log").read_text().splitlines())
+        self.assertEqual(self._r010(events), [])
+
+    def test_flags_a_swapped_pair(self):
+        """Authorization before ServiceDiscovery — both present, wrong order.
+        Authorization 排在 ServiceDiscovery 前面 —— 两条都在，顺序反了。"""
+        def call(name):
+            return V2G_REQ.replace(
+                '"SessionSetupReq":{"EVCCID":"D2AA04792E9F"}', f'"{name}":{{}}')
+        events = v2g_text.parse([
+            call("SessionSetupReq"), call("AuthorizationReq"),
+            call("ServiceDiscoveryReq"),
+        ])
+        (f,) = self._r010(events)
+        self.assertEqual(f.severity, "error")
+        self.assertIn("ServiceDiscovery", f.message)
+        self.assertIn("Authorization", f.message)

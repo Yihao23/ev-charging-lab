@@ -29,20 +29,42 @@ from datetime import datetime
 
 from v2ganalyzer.models import Direction, Event, Kind
 
-# The ISO 15118-2 request/response pairs, in the order a DC session uses them.
-# ISO 15118-2 的请求/响应对，按直流会话的实际顺序排列。
-# Keep this list — rules.py uses it to detect an out-of-order or truncated
-# session, which is the most common real-world V2G failure.
-# 保留这个列表 —— rules.py 用它来检测乱序或截断的会话，这是最常见的真实 V2G 故障。
-ISO15118_2_DC_ORDER = [
-    "SupportedAppProtocol",
+# The ISO 15118-2 request/response pairs in the order a session uses them, as
+# bare message names — the same form `Event.uid` carries, so rules can compare
+# the two directly. Note the lowercase `supportedAppProtocol`: that message is
+# spelled with a lowercase initial in the standard, and the uid inherits it.
+# ISO 15118-2 的请求/响应对，按会话实际顺序排列，用的是去掉 Req/Res 的裸消息名 ——
+# 和 `Event.uid` 同一种形式，规则可以直接比对。注意 `supportedAppProtocol` 是小写
+# 开头: 标准里这条消息就是小写开头，uid 继承了它。
+#
+# Two orders, because AC and DC diverge after ChargeParameterDiscovery. DC has to
+# test the insulation and match the output voltage before closing the contactor,
+# then check the contactor did not weld on the way out; on AC the station never
+# drives DC, so none of those hazards are its to manage and the whole quartet is
+# absent. The shared prefix is identical, so a session that dies before
+# ChargeParameterDiscovery can be judged against either.
+# 两张表，因为交流和直流在 ChargeParameterDiscovery 之后分道。直流必须先验绝缘、
+# 匹配输出电压才能合闸，结束时还要检查接触器有没有粘连；交流下桩不驱动直流，
+# 这些风险都不归它管，那四条消息整体缺席。共同前缀完全相同，所以在
+# ChargeParameterDiscovery 之前就结束的会话，用哪张表判都一样。
+_COMMON_PREFIX = [
+    "supportedAppProtocol",
     "SessionSetup",
     "ServiceDiscovery",
-    "ServiceDetail",
+    "ServiceDetail",             # optional
     "PaymentServiceSelection",
-    "PaymentDetails",
+    "PaymentDetails",            # optional, Plug & Charge only
     "Authorization",
     "ChargeParameterDiscovery",
+]
+
+ISO15118_2_AC_ORDER = _COMMON_PREFIX + [
+    "PowerDelivery",
+    "ChargingStatus",
+    "SessionStop",
+]
+
+ISO15118_2_DC_ORDER = _COMMON_PREFIX + [
     "CableCheck",
     "PreCharge",
     "PowerDelivery",

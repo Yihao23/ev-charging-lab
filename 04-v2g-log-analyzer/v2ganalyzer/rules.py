@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from v2ganalyzer.correlate import correlate
 from v2ganalyzer.models import Event, Finding, Kind
+from v2ganalyzer.parsers.v2g_text import ISO15118_2_AC_ORDER, ISO15118_2_DC_ORDER
 
 # Status values that mean "the other side said no".
 # 表示"对方拒绝了"的状态值。
@@ -282,6 +283,105 @@ def r011_failed_response_code(events: list[Event], cfg: dict) -> list[Finding]:
     return out
 
 
+def _first_seen(events: list[Event]) -> list[str]:
+    """Message names in the order they first appeared.
+    消息名，按首次出现的先后排列。"""
+    order: list[str] = []
+    for e in events:
+        if e.kind is Kind.CALL and e.uid and e.uid not in order:
+            order.append(e.uid)
+    return order
+
+
+def _reference_order(seen: list[str]) -> list[str]:
+    """Which of the two sequences this session should be judged against.
+    这次会话该拿哪张表来判。
+
+    Inferred from the charging-loop message, because that is the one place the
+    two sequences differ observably. Before ChargeParameterDiscovery the prefixes
+    are identical, so a session that died early can take either.
+    从充电循环用的那条消息推断，因为那是两张表唯一可观察的分歧点。
+    ChargeParameterDiscovery 之前前缀完全相同，早夭的会话用哪张都一样。
+    """
+    return ISO15118_2_DC_ORDER if "CurrentDemand" in seen else ISO15118_2_AC_ORDER
+
+
+def r008_truncated_session(events: list[Event], cfg: dict) -> list[Finding]:
+    """Charging started and the session never ended.
+    充电开始了，会话却没有结束。
+
+    A driver reports this as "the car stopped charging by itself"; in the log it
+    is simply the absence of SessionStop after a charging loop. The two are the
+    same event seen from different ends, and nothing else in the analyzer makes
+    that connection.
+    司机报的是"车自己停止充电了"；在日志里它只是充电循环之后缺了 SessionStop。
+    两者是同一件事的两个视角，而分析器里没有别的东西会把它们联系起来。
+
+    Only fires once charging actually began. A session refused at Authorization
+    also lacks SessionStop, but there the refusal is the finding — R011 reports
+    it, and a second alarm about the missing goodbye would only add noise.
+    只在充电真的开始之后才报。在 Authorization 就被拒的会话同样没有 SessionStop，
+    但那里的问题是"被拒"本身 —— R011 会报，再为缺少道别报一次只是噪音。
+    """
+    seen = _first_seen(events)
+    charging = next((m for m in ("CurrentDemand", "ChargingStatus") if m in seen), None)
+    if charging is None or "SessionStop" in seen:
+        return []
+    last = [e for e in events if e.kind is Kind.CALL][-1]
+    return [
+        Finding(
+            "R008",
+            "error",
+            f"session reached {charging} but never sent SessionStop — "
+            f"log ends at {last.action}",
+            line_no=last.line_no,
+            ts=last.ts,
+        )
+    ]
+
+
+def r010_out_of_order(events: list[Event], cfg: dict) -> list[Finding]:
+    """The messages arrived in an order ISO 15118-2 does not allow.
+    消息到达的顺序不是 ISO 15118-2 允许的。
+
+    Checks relative order only, never completeness. ServiceDetail and
+    PaymentDetails are optional, an AC session legitimately omits the four DC
+    messages, and a session can stop early for perfectly good reasons — so
+    absence is never a deviation. Only two messages that both appeared, in the
+    wrong order relative to each other, are.
+    只检查相对顺序，从不检查完整性。ServiceDetail 和 PaymentDetails 是可选的，
+    交流会话合法地省掉四条直流消息，会话也可能因为正当理由提前结束 ——
+    所以缺席从来不算偏差。只有两条都出现了、彼此顺序却反了，才算。
+
+    Reports the first deviation only. After one, everything downstream is
+    suspect and listing it all buries the one place worth looking at.
+    只报第一处偏差。出现一处之后，后面全都可疑，全列出来反而淹没了真正该看的地方。
+    """
+    seen = _first_seen(events)
+    reference = _reference_order(seen)
+    # Anything the reference does not know about cannot be judged — MeteringReceipt
+    # and the -20 messages among others.
+    # 参考表不认识的消息无从判断 —— 比如 MeteringReceipt 和 -20 的那些消息。
+    observed = [m for m in seen if m in reference]
+    expected = [m for m in reference if m in observed]
+    if observed == expected:
+        return []
+
+    at = next(i for i, (a, b) in enumerate(zip(observed, expected)) if a != b)
+    culprit = observed[at]
+    first = next(e for e in events if e.kind is Kind.CALL and e.uid == culprit)
+    return [
+        Finding(
+            "R010",
+            "error",
+            f"{culprit} arrived before {expected[at]}, "
+            f"but ISO 15118-2 orders them the other way round",
+            line_no=first.line_no,
+            ts=first.ts,
+        )
+    ]
+
+
 RULES = [
     r001_unanswered_calls,
     r002_call_errors,
@@ -290,6 +390,8 @@ RULES = [
     r005_heartbeat_gaps,
     r006_illegal_state_transitions,
     r007_power_limit_mismatch,
+    r008_truncated_session,
+    r010_out_of_order,
     r011_failed_response_code,
 ]
 
@@ -323,14 +425,6 @@ _MIN = _dt.min
 # ----------------------------------------------------------------------
 # TODO(you) — project 04, day 11
 # ----------------------------------------------------------------------
-# R010  Out-of-order V2G session: compare the observed message order against
-#       parsers.v2g_text.ISO15118_2_DC_ORDER and report the first deviation.
-#       V2G 会话乱序: 把观察到的消息顺序与 ISO15118_2_DC_ORDER 比对，报告第一处偏差。
-# R008  Truncated session: a session that reaches CurrentDemand but never
-#       SessionStop ended abnormally — the most common real complaint
-#       ("the car stopped charging by itself").
-#       会话截断: 走到 CurrentDemand 却没有 SessionStop = 异常结束，
-#       这正是最常见的真实投诉("车自己停止充电了")。
 # R009  Energy sanity: integrate Power.Active.Import over time and compare with
 #       the Energy.Active.Import.Register delta. A mismatch means a meter or a
 #       unit bug — and unit bugs in this domain are expensive.
