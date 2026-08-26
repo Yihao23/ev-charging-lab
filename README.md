@@ -1,37 +1,35 @@
 # EV Charging Lab
-# 电动汽车充电实验室
+
+*[中文](README.zh-CN.md)*
 
 Learning the EV charging stack from zero in two weeks — OCPP, ISO 15118, SECC
 and Node-RED — by building four small things that work.
-两周内从零学会电动汽车充电技术栈 —— OCPP、ISO 15118、SECC 和 Node-RED ——
-方法是造四个真正能跑的小东西。
 
 > **Started from zero.** In two weeks: from an OCPP hello-world, through a
-> Node-RED test bench, to a protocol-agnostic session analyzer.
-> **从零开始。** 两周: 从 OCPP hello-world，经 Node-RED 测试台架，
-> 到一个与协议无关的会话分析器。
+> Node-RED test bench, to a protocol-agnostic session analyzer, to extending
+> both protocols through their own designed extension points.
 
 ---
 
-## The system in one picture / 一张图看懂整个系统
+## The system in one picture
 
 ```mermaid
 graph LR
-    subgraph Car["🚗 Electric Vehicle | 电动车"]
+    subgraph Car["🚗 Electric Vehicle"]
         EVCC["EVCC<br/>Electric Vehicle<br/>Communication Controller"]
     end
 
-    subgraph Station["⚡ Charging Station | 充电桩"]
+    subgraph Station["⚡ Charging Station"]
         SECC["SECC / vSECC<br/>Supply Equipment<br/>Communication Controller"]
-        LOGIC["Control logic<br/>控制逻辑"]
+        LOGIC["Control logic"]
         SECC --- LOGIC
     end
 
-    subgraph Backend["☁️ Backend | 后台"]
+    subgraph Backend["☁️ Backend"]
         CSMS["CSMS<br/>Charging Station<br/>Management System"]
     end
 
-    EVCC <-->|"ISO 15118 / DIN 70121<br/>over HomePlug GreenPHY (PLC)<br/>经控制导引线的电力线通信"| SECC
+    EVCC <-->|"ISO 15118 / DIN 70121<br/>over HomePlug GreenPHY (PLC)"| SECC
     LOGIC <-->|"OCPP 1.6 / 2.0.1<br/>JSON over WebSocket"| CSMS
 
     style Car fill:#e8f4fd,stroke:#1f6feb
@@ -39,46 +37,104 @@ graph LR
     style Backend fill:#e8f8f0,stroke:#2da44e
 ```
 
-**The one thing to understand first / 首先要理解的一件事:**
-the charging station plays two roles at once. To the car it is an **ISO 15118
-server (SECC)**; to the backend it is an **OCPP client**. Everything else in
-this repo follows from that.
-充电桩同时扮演两个角色: 对车它是 **ISO 15118 服务端 (SECC)**，
-对后台它是 **OCPP 客户端**。这个仓库里其他一切都由此展开。
+**The one thing to understand first:** the charging station plays two roles at
+once. To the car it is an **ISO 15118 server (SECC)**; to the backend it is an
+**OCPP client**. Everything else in this repo follows from that — including why
+the two protocols disagree about almost every design decision.
 
-**The question every interview asks / 每场面试都会问的问题:**
+**The question every interview asks:**
 *"The grid can only give 50 kW. How does that number reach the car?"*
-*"电网只能给 50 kW，这个数字怎么传到车上?"*
 
 ```
-CSMS  --OCPP SetChargingProfile-->  station logic  --ISO 15118 CurrentDemandRes-->  car
+CSMS  --OCPP SetChargingProfile-->  station logic  --ISO 15118 ChargingStatusRes-->  car
                                           ↓
                             takes the minimum of: hardware rating,
                             cable rating, thermal derating, backend profile
-                            取最小值: 硬件额定 / 线缆额定 / 温度降额 / 后台曲线
 ```
 
-Project **01** implements the left half. Project **03** observes the right half.
-项目 **01** 实现左半边，项目 **03** 观察右半边。
+Project **01** implements the left half. Project **03** observes the right half —
+and found the two halves contradicting each other in a real stack.
 
 ---
 
-## The four projects / 四个项目
+## The four projects
 
-| # | Project | What it proves | 证明什么 | Status |
-|---|---|---|---|---|
-| **01** | [OCPP charge point + smart charging](01-ocpp-charge-point/) | You can implement a protocol, not just read about one | 你能实现协议而不只是读协议 | ✅ runs, 15 tests |
-| **02** | [Node-RED mock CSMS + dashboard](02-node-red-flows/) | You can build the test tooling a team actually needs | 你能造出团队真正需要的测试工具 | ✅ runs, dashboard is TODO |
-| **03** | [ISO 15118 session analysis](03-iso15118-analysis/) | You can read a protocol you had never seen | 你能读懂从没见过的协议 | 📝 do the work, fill the report |
-| **04** | [V2G / OCPP log analyzer](04-v2g-log-analyzer/) | You can diagnose, which is the actual daily job | 你能做诊断 —— 这才是日常工作本身 | ✅ runs, 14 tests |
+| # | Project | What it proves | Status |
+|---|---|---|---|
+| **01** | [OCPP charge point + smart charging](01-ocpp-charge-point/) | You can implement a protocol, not just read about one | ✅ 44 tests, runs against SteVe |
+| **02** | [Node-RED mock CSMS + dashboard](02-node-red-flows/) | You can build the test tooling a team actually needs | ✅ dashboard + one-button scenario |
+| **03** | [ISO 15118 session analysis](03-iso15118-analysis/) | You can read a protocol you had never seen | ✅ 8-section report, 5 captures |
+| **04** | [V2G / OCPP log analyzer](04-v2g-log-analyzer/) | You can diagnose, which is the actual daily job | ✅ 54 tests, 11 rules, HTML reports |
 
-Each project's README has its own quick start, gotchas table, day-by-day
-checklist, and interview talking points.
-每个项目的 README 都有自己的快速开始、坑清单、逐日检查表和面试话术。
+Each project's README has its own quick start, gotchas table and interview
+talking points.
+
+**Also published separately:**
+[**wireshark-v2gtp-dissector**](https://github.com/Yihao23/wireshark-v2gtp-dissector)
+— Wireshark ships no V2GTP dissector, so this repo grew one and it became its
+own project.
 
 ---
 
-## 60-second demo / 60 秒演示
+## What the four projects found
+
+Building them was the point; what they turned up is the part worth reading.
+
+**A station advertising two incompatible power limits.** `ChargeParameterDiscoveryRes`
+carries `PMax` in the `SAScheduleList` and `EVSEMaxCurrent` in
+`AC_EVSEChargeParameter`, ISO 15118-2 sets no precedence between them, and the
+stack under test had them disagree by a factor of two. Dropping the station's
+offer to 5 A — below the car's own stated minimum — changed the car's behaviour
+not at all: byte-for-byte the same request for 11 kW. It never reads the field.
+[Report §4–5](03-iso15118-analysis/report/REPORT-01.md).
+
+**A framing bug that a quiet lab link hides.** The stack reads a fixed 7000-byte
+buffer instead of honouring V2GTP's length field. Every message in the capture
+fits in one TCP segment, so it works — until the link is slower or the messages
+bigger. The Wireshark dissector flags the mismatch when it happens.
+
+**Four reconnect bugs found by pulling the plug**, none of which 44 unit tests
+caught: a boot notification reporting `Available` mid-charge, metering silently
+stopping during an outage, an orphaned task double-billing, and a crash on the
+CSMS restarting. [Project 01](01-ocpp-charge-point/).
+
+---
+
+## Extending a protocol without breaking it
+
+The same four fields a bus depot needs — bay, vehicle, departure time, target
+charge — sent over both protocols, through the extension point each one
+designed for the purpose. Neither protocol should carry these natively: the
+departure time comes from the operator's scheduling system, and a standard used
+by hundreds of millions of passenger cars has no business defining a field a few
+thousand depots need.
+
+| | OCPP `DataTransfer` | ISO 15118 `ParameterSet` |
+|---|---|---|
+| On the wire | `"data": "{\"slot\": 7, ...}"` | `{"Name":"DepotSlot","intValue":7}` |
+| Typing | none — JSON inside JSON | `intValue` / `stringValue` / `byteValue` |
+| Peer can validate | ❌ | ✅ the XSD does it |
+| Peer can discover | ❌ agree the vendorId out of band | ✅ `ServiceDiscovery` lists it |
+| TLS required | ❌ | ✅ [V2G2-422] |
+| Refusal | four status codes | `FAILED_ServiceIDInvalid` |
+
+**ISO 15118 cannot take a new field at all.** The XSD is normative and EXI is
+schema-informed, so a field is not a name on the wire but a position — insert
+one element and every subsequent bit shifts. The peer does not ignore an unknown
+field the way a JSON parser would; it decodes garbage from that bit onward. The
+sanctioned route is a value-added service, and the standard reserved the slot
+itself: `ServiceCategory.OtherCustom`.
+
+OCPP connects a station to a backend that usually belongs to the same company,
+so an opaque blob both sides agreed on privately costs nothing. ISO 15118
+connects any car to any station, parties that have never spoken, so an extension
+has to be announced, typed and safely ignorable.
+
+[Project 01](01-ocpp-charge-point/) · [Report §7](03-iso15118-analysis/report/REPORT-01.md)
+
+---
+
+## 60-second demo
 
 ```bash
 # 1. the backend
@@ -95,117 +151,78 @@ python -m cp.charge_point --csms ws://localhost:9000 --id CP_1 --autostart 2
 # 3. analyse the session you just recorded
 cd ../04-v2g-log-analyzer
 python -m v2ganalyzer samples/ocpp_session_faulty.log
+python -m v2ganalyzer samples/ocpp_session.log --format html -o report.html
 ```
 
 Everything runs on a laptop. No charging station, no car, no PLC modem.
-一切都在笔记本上跑，不需要充电桩、车或 PLC 调制解调器。
 
 ---
 
-## Two-week plan / 两周计划
-
-| Day | Focus | 内容 | Deliverable / 产出 |
-|---|---|---|---|
-| **1** | Concepts + OCPP hello world | 概念 + OCPP 入门 | Can name every layer of the ISO 15118 stack |
-| **2–4** | Project **01** | OCPP + SteVe + 智能充电 | A station that honours `SetChargingProfile` |
-| **5–7** | Project **02** | Node-RED 仪表盘 | 📸 a dashboard screenshot |
-| **8–12** | Projects **03** + **04** | ISO 15118 会话 + 日志分析 | 📄 a session analysis report |
-| **13–14** | Write-up | 整理与讲述 | This README, polished, with images |
-
-Full breakdown: [`docs/14-DAY-PLAN.md`](docs/14-DAY-PLAN.md)
-
-### Progress / 进度
-
-- [ ] Day 1 — concepts, OCPP hello world
-- [ ] Day 2 — project 01 running end to end
-- [ ] Day 3 — `profile.py` TODOs implemented, tests green
-- [ ] Day 4 — SteVe integration + offline queueing
-- [ ] Day 5 — Node-RED flow imported, station driven from it
-- [ ] Day 6 — dashboard live at `/ui`
-- [ ] Day 7 — automated bench scenario + 📸 screenshot
-- [x] Day 8 — ISO 15118 SECC + EVCC session completes
-- [x] Day 9 — pcap captured, one EXI message decoded by hand
-- [x] Day 10 — fault injected, log captured
-- [x] Day 11 — `v2g_text.py` parser written, R007 implemented
-- [ ] Day 12 — 📄 analysis report finished
-- [ ] Day 13 — READMEs polished, screenshots in place
-- [ ] Day 14 — talk through every project out loud, twice
-
----
-
-## Documentation / 文档
+## Documentation
 
 | Doc | What |
 |---|---|
-| [`docs/GLOSSARY.md`](docs/GLOSSARY.md) | Every acronym in this repo, bilingual / 本仓库所有缩写，中英对照 |
-| [`docs/14-DAY-PLAN.md`](docs/14-DAY-PLAN.md) | Day-by-day plan with checkboxes / 逐日计划与勾选项 |
+| [`03-iso15118-analysis/report/REPORT-01.md`](03-iso15118-analysis/report/REPORT-01.md) | The session analysis, eight sections, written from captures in this repo |
+| [`04-v2g-log-analyzer/samples/`](04-v2g-log-analyzer/samples/) | Generated reports, Markdown and HTML, one with an SVG power plot |
+| [`docs/GLOSSARY.md`](docs/GLOSSARY.md) | Every acronym in this repo |
+| [`docs/14-DAY-PLAN.md`](docs/14-DAY-PLAN.md) | The plan this was built to |
 
 ---
 
-## Screenshots / 截图
+## Screenshots
 
 The station in this repo, driven by [SteVe](https://github.com/steve-community/steve)
 — an open-source OCPP 1.6 CSMS in production use since 2013.
-本仓库的充电桩，由 [SteVe](https://github.com/steve-community/steve) 驱动 ——
-一个 2013 年至今仍在生产使用的开源 OCPP 1.6 后台。
 
 ![A complete transaction recorded by SteVe](01-ocpp-charge-point/screenshots/steve-transaction.png)
 
 A transaction started from SteVe's web UI: 1686 Wh over 14 minutes, opened and
 closed by `RemoteStartTransaction` / `RemoteStopTransaction`.
-从 SteVe 的 Web 界面发起的一次事务: 14 分钟 1686 Wh，由远程启停指令开始和结束。
 
-| Image | What it shows | 说明 |
-|---|---|---|
-| [`steve-transaction.png`](01-ocpp-charge-point/screenshots/steve-transaction.png) | ⭐ The completed transaction, start to stop | 完整的事务记录 |
-| [`steve-chargepoint-details.png`](01-ocpp-charge-point/screenshots/steve-chargepoint-details.png) | The vendor / model / firmware strings this code sends in `BootNotification`, stored by SteVe | 代码里写的厂商/型号/固件，一路存进 SteVe |
-| [`steve-dashboard.png`](01-ocpp-charge-point/screenshots/steve-dashboard.png) | SteVe's dashboard mid-charge | 充电中的后台总览 |
-| [`steve-connected.png`](01-ocpp-charge-point/screenshots/steve-connected.png) | The OCPP 1.6-J WebSocket session, live | 实时的 OCPP 1.6-J 连接 |
-| [`steve-connector-status.png`](01-ocpp-charge-point/screenshots/steve-connector-status.png) | Connector back to `Available` after the stop | 停止后接口回到 Available |
+| Image | What it shows |
+|---|---|
+| [`steve-transaction.png`](01-ocpp-charge-point/screenshots/steve-transaction.png) | ⭐ The completed transaction, start to stop |
+| [`steve-chargepoint-details.png`](01-ocpp-charge-point/screenshots/steve-chargepoint-details.png) | The vendor / model / firmware strings this code sends in `BootNotification`, stored by SteVe |
+| [`steve-dashboard.png`](01-ocpp-charge-point/screenshots/steve-dashboard.png) | SteVe's dashboard mid-charge |
+| [`steve-connected.png`](01-ocpp-charge-point/screenshots/steve-connected.png) | The OCPP 1.6-J WebSocket session, live |
+| [`steve-connector-status.png`](01-ocpp-charge-point/screenshots/steve-connector-status.png) | Connector back to `Available` after the stop |
 
 ![The Node-RED dashboard mid-session](02-node-red-flows/screenshots/dashboard.png)
 
-The same station seen through a Node-RED bench dashboard. The notch in the
-power trace is the backend curtailing the station and releasing it again —
+The same station seen through a Node-RED bench dashboard. The notch in the power
+trace is the backend curtailing the station and releasing it again —
 `SetChargingProfile` arriving, the station obeying, and recovering.
-同一台桩在 Node-RED 台架仪表盘里的样子。功率曲线上的凹槽就是后台限功率再放开 ——
-`SetChargingProfile` 到达、桩照做、然后恢复。
-
-Still to come / 还没有的:
-
-| | |
-|---|---|
-| `02-node-red-flows/screenshots/flow.png` | The mock CSMS flow |
-| `03-iso15118-analysis/captures/wireshark.png` | A V2G session in Wireshark |
-| `04-v2g-log-analyzer/samples/report-example.md` | ✅ already generated |
 
 ---
 
-## Open source used / 用到的开源项目
+## Open source used
 
 | Project | Role here |
 |---|---|
 | [mobilityhouse/ocpp](https://github.com/mobilityhouse/ocpp) | OCPP 1.6 / 2.0.1 / 2.1 Python library — project 01 |
 | [steve-community/steve](https://github.com/steve-community/steve) | Real OCPP 1.6 CSMS with a web UI — project 01 |
+| [EcoG-io/iso15118](https://github.com/EcoG-io/iso15118) | Python SECC + EVCC — project 03 |
+| [uhi22/OpenV2Gx](https://github.com/uhi22/OpenV2Gx) | Command-line EXI decoder — projects 03 + 04 |
+| [uhi22/pyPLC](https://github.com/uhi22/pyPLC) | SLAC and the PLC physical layer |
+| [EVerest/everest-core](https://github.com/EVerest/everest-core) | Industrial C++ charging stack |
 | [citrineos/citrineos](https://github.com/citrineos/citrineos) | Open-source OCPP 2.0.1 CSMS |
 | [thoughtworks/maeve-csms](https://github.com/thoughtworks/maeve-csms) | CSMS with ISO 15118 Plug & Charge |
 | [SAP/e-mobility-charging-stations-simulator](https://github.com/SAP/e-mobility-charging-stations-simulator) | Scale-test with many stations |
-| [EcoG-io/iso15118](https://github.com/EcoG-io/iso15118) | Python SECC + EVCC — project 03 |
-| [EVerest/everest-core](https://github.com/EVerest/everest-core) | Industrial C++ charging stack |
 | [EDF-Lab/eVDriveFlow](https://github.com/EDF-Lab/eVDriveFlow) | ISO 15118-20 / bidirectional charging |
-| [uhi22/pyPLC](https://github.com/uhi22/pyPLC) | SLAC and the PLC physical layer — project 03 |
-| [uhi22/OpenV2Gx](https://github.com/uhi22/OpenV2Gx) | Command-line EXI decoder — projects 03 + 04 |
 | [Argonne-National-Laboratory/node-red-contrib-ocpp](https://github.com/Argonne-National-Laboratory/node-red-contrib-ocpp) | Ready-made OCPP nodes — project 02 |
 | [juherr/awesome-ev-charging](https://github.com/juherr/awesome-ev-charging) | Index of everything else |
 
 ---
 
-## Tests / 测试
+## Tests
 
 ```bash
-cd 01-ocpp-charge-point && python -m unittest discover -s tests -v   # 15 passed
-cd 04-v2g-log-analyzer  && python -m unittest discover -s tests -v   # 14 passed
+cd 01-ocpp-charge-point && python -m unittest discover -s tests   # 44 passed
+cd 04-v2g-log-analyzer  && python -m unittest discover -s tests   # 54 passed
 ```
 
-`03` has no tests — it is a reading and writing project, on purpose.
-`03` 没有测试 —— 它刻意是一个"读与写"的项目。
+Project 04 is standard-library only, on purpose: a diagnostic tool is worth more
+if it runs on a station's embedded Linux without a package manager.
+
+`03` has no tests — it is a reading and writing project, and its output is the
+report.
