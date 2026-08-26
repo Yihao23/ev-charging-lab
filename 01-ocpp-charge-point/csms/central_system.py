@@ -92,13 +92,22 @@ class CentralSystem(OcppChargePoint):
         self.next_tx_id += 1
         self.transactions[tx_id] = id_tag
         LOG.info("StartTransaction c%s idTag=%s -> tx=%s", connector_id, id_tag, tx_id)
-        # An @on handler must return the CALLRESULT synchronously, so the
-        # outbound DataTransfer is scheduled rather than awaited — awaiting here
-        # would deadlock: the reply the charge point is waiting for is the value
-        # this function has not returned yet.
-        # @on 处理器必须同步返回 CALLRESULT，所以往外发的 DataTransfer 只能调度、
-        # 不能 await —— 在这里 await 会死锁: 桩正在等的那个响应，
-        # 正是这个还没返回的函数的返回值。
+        # Scheduled, not awaited. The immediate reason is that this handler is
+        # a plain def, so `await` is not even syntactically available — but
+        # making it `async def` would not help. ocpp's read loop is
+        #     while True: await self.route_message(await recv())
+        # so the handler runs *inside* the loop and nothing reads the socket
+        # while it does. A self.call() awaited here would wait for a CALLRESULT
+        # that can never be read, because the only reader is this handler's
+        # caller. create_task hands the send to the event loop and lets the
+        # read loop get back to reading.
+        # 用调度而不是 await。直接原因是这个处理器是普通 def，`await` 语法上就写不了 ——
+        # 但改成 `async def` 也没用。ocpp 的读循环是
+        #     while True: await self.route_message(await recv())
+        # 处理器是在循环**里面**跑的，它跑的时候没人在读 socket。在这里 await
+        # 一个 self.call()，等的那个 CALLRESULT 永远读不到，因为唯一的读取者
+        # 正是这个处理器的调用者。create_task 把发送交给事件循环，
+        # 让读循环赶紧回去读。
         asyncio.create_task(self.send_depot_assignment(tx_id, id_tag))
         return call_result.StartTransaction(
             transaction_id=tx_id,
