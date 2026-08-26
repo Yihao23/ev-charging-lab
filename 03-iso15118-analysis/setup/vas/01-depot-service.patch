@@ -1,0 +1,56 @@
+diff --git a/iso15118/evcc/states/iso15118_2_states.py b/iso15118/evcc/states/iso15118_2_states.py
+index 1c33d06..9f86bf5 100644
+--- a/iso15118/evcc/states/iso15118_2_states.py
++++ b/iso15118/evcc/states/iso15118_2_states.py
+@@ -314,6 +314,7 @@ class ServiceDiscovery(StateEVCC):
+                 # Certificate service
+                 self.comm_session.service_details_to_request.append(service.service_id)
+ 
++
+                 # TODO We should actually first ask for the ServiceDetails and
+                 #      based on the service parameter list make absolutely sure
+                 #      that the certificate installation service is offered,
+@@ -321,6 +322,9 @@ class ServiceDiscovery(StateEVCC):
+                 self.comm_session.selected_services.append(
+                     SelectedService(service_id=ServiceID.CERTIFICATE)
+                 )
++            if service.service_category == ServiceCategory.CUSTOM:
++                self.comm_session.service_details_to_request.append(service.service_id)
++
+ 
+             # Request more service details if you're interested in e.g.
+             # an Internet service or a use case-specific service
+diff --git a/iso15118/secc/states/iso15118_2_states.py b/iso15118/secc/states/iso15118_2_states.py
+index 9db6ee8..e208c9b 100644
+--- a/iso15118/secc/states/iso15118_2_states.py
++++ b/iso15118/secc/states/iso15118_2_states.py
+@@ -378,6 +378,14 @@ class ServiceDiscovery(StateSECC):
+ 
+                 service_list.append(cert_install_service)
+ 
++            depot_service = ServiceDetails(
++                    service_id=4,
++                    service_name=ServiceName.CUSTOM,
++                    service_category=ServiceCategory.CUSTOM,
++                    free_service=True,
++                )
++            service_list.append(depot_service)
++
+             # Add more value-added services (VAS) here if need be
+ 
+         # The optional service_list element of ServiceDiscoveryRes must only be set if
+@@ -487,6 +495,14 @@ class ServiceDetail(StateSECC):
+             )
+             parameter_set.append(install_parameter_set)
+ 
++        if service_detail_req.service_id == 4:
++            parameter_set.append(ParameterSet(parameter_set_id=1, parameters=[
++                Parameter(name="DepotSlot" , int_value=7),
++                Parameter(name="BusId",      str_value="EB123"),
++                Parameter(name="DepartAt",   str_value="06:35"),
++                Parameter(name="TargetSoc",  byte_value=90),
++            ]))
++
+         # To offer an Internet service, add the service parameter set here
+         if service_detail_req.service_id == ServiceID.INTERNET:
+             # We don't offer the Internet service at the moment via

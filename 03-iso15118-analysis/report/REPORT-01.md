@@ -461,7 +461,109 @@ a response from the other. Keying `uid` on `SessionID:MessageName` would fix it.
 一次会话的请求和另一次的响应配到一起。把 `uid` 改成 `SessionID:消息名` 即可修复。
 ---
 
-## 7. What I would do next / 下一步
+## 7. Extending ISO 15118 without breaking it / 在不破坏 ISO 15118 的前提下扩展它
+
+A bus depot needs four things OCPP and ISO 15118 both lack: which bay a vehicle
+is in, which vehicle it is, when it has to leave, and what charge it needs by
+then. Neither protocol should carry them. The departure time comes from the
+operator's scheduling system rather than from the charger, and a standard used
+by hundreds of millions of passenger cars has no business defining a field that
+a few thousand depots need.
+公交场站需要四样 OCPP 和 ISO 15118 都没有的东西: 车位号、车辆编号、发车时间、
+目标电量。两个协议都不该带它们。发车时间来自运营方的排班系统而不是充电桩，
+而一个服务几亿辆乘用车的标准，不该为几千个场站定义字段。
+
+The two protocols answer this differently, and the difference is the whole
+point of implementing both.
+两个协议给出了不同的答案，而这个差别正是两边都做一遍的意义所在。
+
+### ISO 15118 cannot take a new field at all / ISO 15118 根本加不了字段
+
+The XSD is normative and EXI is schema-informed. A field is not a name on the
+wire, it is a position: the decoder knows to read two bits here and eight there
+because the grammar generated from the XSD says so. Insert one element and every
+subsequent bit shifts, so the peer does not "ignore the unknown field" the way a
+JSON parser would — it decodes garbage from that bit onward, for this message and
+every one after it.
+XSD 是规范性的，EXI 又是 schema-informed。字段在线路上不是一个名字，是一个位置:
+解码器知道这里读 2 位、那里读 8 位，是因为从 XSD 生成的语法这么写。插入一个元素，
+之后每一位都错位 —— 对端不会像 JSON 解析器那样"忽略不认识的字段"，
+而是从那一位起解出乱码，这条消息以及之后所有消息都是。
+
+The sanctioned route is a value-added service, and the standard reserved the
+slot itself:
+官方路线是增值服务，而且标准自己留好了槽:
+
+```python
+# iso15118/shared/messages/iso15118_2/datatypes.py
+class ServiceCategory(str, Enum):
+    CUSTOM = "OtherCustom"          # ← the depot lives here
+class ServiceName(str, Enum):
+    CUSTOM = "UseCaseInformation"
+```
+
+Nothing about this is a workaround. ISO 15118-2 anticipated exactly this case.
+这里没有任何取巧。ISO 15118-2 早就预见到了这种用法。
+
+### What it looks like on the wire / 线路上的样子
+
+Three steps, reproducible with
+[`setup/vas/00-enable-tls.sh`](../setup/vas/00-enable-tls.sh) and
+[`01-depot-service.sh`](../setup/vas/01-depot-service.sh), captured in
+[`session-05-vas`](../captures/session-05-vas.pcap):
+
+```json
+ServiceDiscoveryRes   "ServiceList": {"Service": [
+                          {"ServiceID": 2, "ServiceName": "Certificate", ...},
+                          {"ServiceID": 4, "ServiceName": "UseCaseInformation",
+                           "ServiceCategory": "OtherCustom", "FreeService": true}]}
+
+ServiceDetailReq      {"ServiceID": 4}
+
+ServiceDetailRes      "ServiceParameterList": {"ParameterSet": [{"ParameterSetID": 1,
+                          "Parameter": [{"Name": "DepotSlot", "intValue": 7},
+                                        {"Name": "BusId",     "stringValue": "EB123"},
+                                        {"Name": "DepartAt",  "stringValue": "06:35"},
+                                        {"Name": "TargetSoc", "byteValue": 90}]}]}
+```
+
+**Discovery first, details on request.** The car cannot guess a ServiceID: the
+station builds its list at runtime — TLS off means no list at all — and
+[V2G2-425] requires the SECC to answer `FAILED_ServiceIDInvalid` for an ID it
+never offered. Probing is not merely futile, it is specified as an error.
+**先发现，再按需取详情。** 车猜不出 ServiceID: 服务列表是桩运行时构造的（不开 TLS
+就根本没有），而 [V2G2-425] 要求桩对没提供过的 ID 回 `FAILED_ServiceIDInvalid`。
+试探不只是徒劳，是被规定为错误。
+
+### Against the OCPP answer / 对照 OCPP 的答案
+
+The same four fields go over OCPP's `DataTransfer`
+([project 01](../../01-ocpp-charge-point/)):
+
+| | OCPP `DataTransfer` | ISO 15118 `ParameterSet` |
+|---|---|---|
+| On the wire | `"data": "{\"slot\": 7, ...}"` | `{"Name":"DepotSlot","intValue":7}` |
+| Typing | none — JSON inside JSON | `intValue` / `stringValue` / `byteValue` |
+| Peer can validate | ❌ | ✅ the XSD does it |
+| Peer can discover | ❌ agree the vendorId out of band | ✅ `ServiceDiscovery` lists it |
+| TLS required | ❌ | ✅ [V2G2-422] |
+| Namespace | reverse-DNS `vendorId` | `ServiceID` + `OtherCustom` |
+| Refusal | four status codes | `FAILED_ServiceIDInvalid` |
+
+The trade is the same one that separates the two protocols everywhere else.
+OCPP connects a station to a backend that usually belongs to the same company or
+a contracted partner, so an opaque blob both sides agreed on privately costs
+nothing. ISO 15118 connects any car to any station, parties that have never
+spoken, so an extension has to be announced, typed, and safely ignorable — and
+that is worth the six value types and the mandatory TLS.
+这个取舍和两个协议在别处的分歧是同一个。OCPP 连接的桩和后台通常同属一家公司或有
+合同关系，所以一个双方私下约定的不透明字符串没什么代价。ISO 15118 连接的是任意车
+和任意桩 —— 两个素未谋面的参与方 —— 所以扩展必须能被告知、有类型、且能被安全忽略，
+这才值得付出"只有六种类型"和"强制 TLS"的代价。
+
+---
+
+## 8. What I would do next / 下一步
 
 1. **Force a DC session** (`RequestedEnergyTransferMode: "DC_extended"`) and
    capture `CableCheck` / `PreCharge` / `CurrentDemand` / `WeldingDetection` — the
