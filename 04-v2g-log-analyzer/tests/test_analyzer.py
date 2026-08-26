@@ -539,3 +539,76 @@ class TestSvgPlot(unittest.TestCase):
     def test_html_without_meter_data_has_no_plot(self):
         out = render.html(self._session("v2g_session.log"))
         self.assertNotIn("<svg", out)
+
+
+class TestR012DataTransferNotProcessed(unittest.TestCase):
+    """A DataTransfer the peer did not process. The sender's own logs look fine —
+    the CALL went out, a CALLRESULT came back — so the extension silently does
+    nothing and nobody notices until someone asks why the depot data never
+    arrived.
+    对端没有处理的 DataTransfer。发送方自己的日志一切正常 —— 请求发出去了，
+    响应也回来了 —— 于是扩展功能静默失效，直到有人问"场站数据怎么一直没到"
+    才会发现。
+    """
+
+    @staticmethod
+    def _r012(path):
+        events = ocpp_json.parse((SAMPLES / path).read_text().splitlines())
+        correlate(events)
+        return [f for f in rules.run(events) if f.rule == "R012"]
+
+    def test_flags_both_directions_of_a_vendor_mismatch(self):
+        """samples/ocpp_session_datatransfer.log was captured with the station's
+        vendorId deliberately wrong, so each end rejects the other's namespace.
+        这份样本是把桩的 vendorId 故意改错后抓的，两端互相不认对方的命名空间。"""
+        found = self._r012("ocpp_session_datatransfer.log")
+        self.assertEqual(len(found), 2)
+        for f in found:
+            with self.subTest(msg=f.message):
+                self.assertEqual(f.severity, "error")
+                self.assertIn("UnknownVendorId", f.message)
+
+    def test_names_the_vendor_and_message_that_were_refused(self):
+        """A finding that says only "rejected" sends the reader back to the log.
+        只说"被拒了"的告警，等于把人打发回日志里重新找。"""
+        (a, b) = sorted(self._r012("ocpp_session_datatransfer.log"), key=lambda f: f.message)
+        self.assertIn("de.example.depot", a.message)
+        self.assertIn("DepotSlotAssignment", a.message)
+        self.assertIn("de.wrong.vendor", b.message)
+        self.assertIn("DepotSlotStatus", b.message)
+
+    def test_silent_when_the_peer_accepted(self):
+        """The other OCPP samples carry no DataTransfer at all, and a session
+        where the extension worked must stay quiet.
+        另外几份 OCPP 样本根本没有 DataTransfer；而扩展正常工作的会话必须不报。"""
+        for log in ("ocpp_session.log", "ocpp_session_faulty.log"):
+            with self.subTest(log=log):
+                self.assertEqual(self._r012(log), [])
+
+        accepted = (
+            '2026-08-26 12:00:00,000  ocpp   CP_1: send '
+            '[2,"d1","DataTransfer",{"vendorId":"de.example.depot",'
+            '"messageId":"DepotSlotStatus","data":"{}"}]',
+            '2026-08-26 12:00:00,010  ocpp   CP_1: receive message '
+            '[3,"d1",{"status":"Accepted"}]',
+        )
+        events = ocpp_json.parse(list(accepted))
+        correlate(events)
+        self.assertEqual([f for f in rules.run(events) if f.rule == "R012"], [])
+
+    def test_a_refusal_of_the_content_is_only_a_warning(self):
+        """Rejected means the peer understood and declined this payload — a
+        different problem from not speaking the namespace at all.
+        Rejected 表示对端听懂了、但拒绝了这次的内容 —— 和"压根不懂这个命名空间"
+        是两种不同的问题。"""
+        lines = (
+            '2026-08-26 12:00:00,000  ocpp   CP_1: send '
+            '[2,"d2","DataTransfer",{"vendorId":"de.example.depot",'
+            '"messageId":"DepotSlotStatus","data":"not json"}]',
+            '2026-08-26 12:00:00,010  ocpp   CP_1: receive message '
+            '[3,"d2",{"status":"Rejected"}]',
+        )
+        events = ocpp_json.parse(list(lines))
+        correlate(events)
+        (f,) = [f for f in rules.run(events) if f.rule == "R012"]
+        self.assertEqual(f.severity, "warning")

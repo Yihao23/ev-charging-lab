@@ -251,6 +251,36 @@ it is diagnosing.** Say this out loud — it is a real engineering judgement.
 
 ---
 
+
+## R012 — the extension that fails silently / 静默失效的扩展
+
+`DataTransfer` is OCPP's extension point, and its failure mode is silence. The
+CALL goes out, a CALLRESULT comes back, and the sender's own log reads as a
+success — but a status of `UnknownVendorId` means the peer never processed it,
+so whatever the extension was for simply did not happen.
+`DataTransfer` 是 OCPP 的扩展点，而它的失败方式是"静默"。请求发出去了、
+响应也回来了、发送方日志读起来一切正常 —— 但 status 是 `UnknownVendorId`
+就意味着对端根本没处理，这个扩展该做的事就是没做。
+
+No other rule catches it. R002 needs a `CALLERROR` frame and this is a perfectly
+ordinary `CALLRESULT`; R003 matches against a fixed `BAD_STATUS` list that is
+OCPP-1.6 core vocabulary and never included `UnknownVendorId`.
+别的规则抓不到。R002 要 `CALLERROR` 帧，而这是一条再正常不过的 `CALLRESULT`;
+R003 比对的是一张固定的 `BAD_STATUS` 清单，那是 OCPP 1.6 核心词汇，
+里面从来没有 `UnknownVendorId`。
+
+The two `Unknown*` statuses are errors and `Rejected` is a warning, because they
+call for different fixes: `Rejected` means the peer understood and declined this
+payload, while `Unknown*` means the extension is not wired up on that side at
+all.
+两个 `Unknown*` 判 error，`Rejected` 判 warning，因为要修的地方不同:
+`Rejected` 表示对端听懂了、拒绝了这次的内容，`Unknown*` 表示那一端根本没接上。
+
+[`samples/ocpp_session_datatransfer.log`](samples/ocpp_session_datatransfer.log)
+was captured with the station's `vendorId` deliberately wrong, so both ends
+refuse each other and the rule reports two findings.
+样本是把桩的 `vendorId` 故意改错后抓的，两端互相拒绝，规则报出两条。
+
 ## References / 参考
 
 - [uhi22/OpenV2Gx](https://github.com/uhi22/OpenV2Gx) — command-line EXI decoder, call it from `v2g_text.py`

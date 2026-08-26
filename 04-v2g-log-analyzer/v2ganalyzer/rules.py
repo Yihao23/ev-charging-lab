@@ -382,6 +382,64 @@ def r010_out_of_order(events: list[Event], cfg: dict) -> list[Finding]:
     ]
 
 
+# DataTransfer statuses that mean the peer did not act on the message. The two
+# "Unknown" ones are worse than Rejected: Rejected means the peer understood and
+# declined this payload, while Unknown* means the extension is not wired up at
+# all on that side.
+# 表示对端没有处理这条消息的 DataTransfer 状态。两个 "Unknown" 比 Rejected 更严重:
+# Rejected 表示对端听懂了、拒绝了这次的内容，Unknown* 表示那一端根本没接上这个扩展。
+_DT_NOT_PROCESSED = {
+    "UnknownVendorId": "error",
+    "UnknownMessageId": "error",
+    "Rejected": "warning",
+}
+
+
+def r012_data_transfer_not_processed(events: list[Event], cfg: dict) -> list[Finding]:
+    """A DataTransfer the peer did not act on.
+    对端没有处理的 DataTransfer。
+
+    DataTransfer is OCPP's extension point, and its failure mode is silence. The
+    CALL goes out, a CALLRESULT comes back, and the sender's own logs read as a
+    success — but the status says the peer never processed it, so whatever the
+    extension was supposed to do simply did not happen. Nobody finds out until
+    someone asks why the data never arrived.
+    DataTransfer 是 OCPP 的扩展点，而它的失败方式是"静默"。请求发出去了，
+    响应也回来了，发送方自己的日志读起来一切正常 —— 但 status 说对端根本没处理，
+    于是这个扩展该做的事就是没做。直到有人问"数据怎么一直没到"才会发现。
+
+    No existing rule catches it: R002 needs a CALLERROR frame, and R003's
+    BAD_STATUS is a fixed list that never included UnknownVendorId.
+    现有规则一条都抓不到: R002 要 CALLERROR 帧，而 R003 的 BAD_STATUS 是一张固定
+    清单，里面从来没有 UnknownVendorId。
+    """
+    correlate(events)
+    out: list[Finding] = []
+    for e in events:
+        if e.kind is not Kind.CALL or e.action != "DataTransfer":
+            continue
+        reply = e.answered_by
+        if reply is None:
+            continue                       # unanswered is R001's business
+        status = reply.payload.get("status")
+        severity = _DT_NOT_PROCESSED.get(status)
+        if severity is None:
+            continue
+        vendor = e.payload.get("vendorId") or "?"
+        message = e.payload.get("messageId") or "?"
+        out.append(
+            Finding(
+                "R012",
+                severity,
+                f"DataTransfer {vendor}/{message} -> {status}: "
+                f"the peer did not process it",
+                line_no=e.line_no,
+                ts=e.ts,
+            )
+        )
+    return out
+
+
 RULES = [
     r001_unanswered_calls,
     r002_call_errors,
@@ -393,6 +451,7 @@ RULES = [
     r008_truncated_session,
     r010_out_of_order,
     r011_failed_response_code,
+    r012_data_transfer_not_processed,
 ]
 
 

@@ -1,0 +1,36 @@
+2026-08-26 12:13:36,542  cp     connecting to ws://localhost:9000/CP_1
+2026-08-26 12:13:36,555  ocpp   CP_1: send [2,"393a6893-ad81-47d9-93d2-ea33196129b7","BootNotification",{"chargePointModel":"SimCP-1","chargePointVendor":"ev-charging-lab","firmwareVersion":"0.1.0"}]
+2026-08-26 12:13:36,558  ocpp   CP_1: receive message [3,"393a6893-ad81-47d9-93d2-ea33196129b7",{"currentTime":"2026-08-26T10:13:36.557649+00:00","interval":30,"status":"Accepted"}]
+2026-08-26 12:13:36,559  cp     BootNotification -> Accepted (interval=30s)
+2026-08-26 12:13:36,559  cp     state -> Available (NoError)
+2026-08-26 12:13:36,559  ocpp   CP_1: send [2,"de9c3452-c5bf-4079-b067-b818e04eab01","StatusNotification",{"connectorId":1,"errorCode":"NoError","status":"Available","timestamp":"2026-08-26T10:13:36.559086+00:00"}]
+2026-08-26 12:13:36,560  ocpp   CP_1: receive message [3,"de9c3452-c5bf-4079-b067-b818e04eab01",{}]
+2026-08-26 12:13:38,563  cp     state -> Preparing (NoError)
+2026-08-26 12:13:38,564  ocpp   CP_1: send [2,"16544629-52e5-441e-9a7b-870af481fc22","StatusNotification",{"connectorId":1,"errorCode":"NoError","status":"Preparing","timestamp":"2026-08-26T10:13:38.563935+00:00"}]
+2026-08-26 12:13:38,568  ocpp   CP_1: receive message [3,"16544629-52e5-441e-9a7b-870af481fc22",{}]
+2026-08-26 12:13:38,570  ocpp   CP_1: send [2,"381f61c9-da88-4d3d-adb6-ea1f7e9ddcb2","Authorize",{"idTag":"DEADBEEF"}]
+2026-08-26 12:13:38,573  ocpp   CP_1: receive message [3,"381f61c9-da88-4d3d-adb6-ea1f7e9ddcb2",{"idTagInfo":{"status":"Accepted"}}]
+2026-08-26 12:13:38,574  cp     Authorize(DEADBEEF) -> Accepted
+2026-08-26 12:13:38,575  ocpp   CP_1: send [2,"25399948-ce6a-433a-9e2d-fa1eb02441f0","StartTransaction",{"connectorId":1,"idTag":"DEADBEEF","meterStart":0,"timestamp":"2026-08-26T10:13:38.575032+00:00"}]
+2026-08-26 12:13:38,580  ocpp   CP_1: receive message [3,"25399948-ce6a-433a-9e2d-fa1eb02441f0",{"transactionId":1,"idTagInfo":{"status":"Accepted"}}]
+2026-08-26 12:13:38,580  ocpp   CP_1: receive message [2,"5b23b29d-68be-4790-a49e-362e597feea5","DataTransfer",{"vendorId":"de.example.depot","messageId":"DepotSlotAssignment","data":"{\"slot\": 7, \"busId\": \"EB123\", \"departAt\": \"06:35\", \"targetSoc\": 90, \"transactionId\": 1, \"idTag\": \"DEADBEEF\"}"}]
+2026-08-26 12:13:38,581  cp     StartTransaction -> transactionId=1
+2026-08-26 12:13:38,582  cp     DataTransfer from unknown vendor de.example.depot
+2026-08-26 12:13:38,583  ocpp   CP_1: send [2,"c2371b70-17c6-4d8c-b1ec-7acec415f541","DataTransfer",{"vendorId":"de.wrong.vendor","messageId":"DepotSlotStatus","data":"{\"slot\": 7, \"busId\": \"EB123\", \"departAt\": \"06:35\", \"targetSoc\": 90, \"transactionId\": 1}"}]
+2026-08-26 12:13:38,584  ocpp   CP_1: send [3,"5b23b29d-68be-4790-a49e-362e597feea5",{"status":"UnknownVendorId"}]
+2026-08-26 12:13:38,585  ocpp   CP_1: receive message [3,"c2371b70-17c6-4d8c-b1ec-7acec415f541",{"status":"UnknownVendorId"}]
+2026-08-26 12:13:38,586  cp     DepotSlotStatus -> UnknownVendorId  (backend did not process it)
+2026-08-26 12:13:38,586  cp     state -> Charging (NoError)
+2026-08-26 12:13:38,587  ocpp   CP_1: send [2,"5a8606b2-13e4-4f57-95e2-fa6dce8fa550","StatusNotification",{"connectorId":1,"errorCode":"NoError","status":"Charging","timestamp":"2026-08-26T10:13:38.586501+00:00"}]
+2026-08-26 12:13:38,588  ocpp   CP_1: receive message [3,"5a8606b2-13e4-4f57-95e2-fa6dce8fa550",{}]
+2026-08-26 12:13:41,562  ocpp   CP_1: send [2,"03f7c57e-6850-4658-908a-fc9007689045","MeterValues",{"connectorId":1,"meterValue":[{"timestamp":"2026-08-26T10:13:41.558882+00:00","sampledValue":[{"value":"10.2","measurand":"Energy.Active.Import.Register","unit":"Wh"},{"value":"7360.0","measurand":"Power.Active.Import","unit":"W"},{"value":"32.0","measurand":"Current.Import","unit":"A"}]}],"transactionId":1}]
+2026-08-26 12:13:41,568  ocpp   CP_1: receive message [3,"03f7c57e-6850-4658-908a-fc9007689045",{}]
+2026-08-26 12:13:44,593  cp     state -> Finishing (NoError)
+2026-08-26 12:13:44,596  ocpp   CP_1: send [2,"e9f51ccd-c6cd-426f-9b36-4bb0decd13bb","StatusNotification",{"connectorId":1,"errorCode":"NoError","status":"Finishing","timestamp":"2026-08-26T10:13:44.593943+00:00"}]
+2026-08-26 12:13:44,601  ocpp   CP_1: receive message [3,"e9f51ccd-c6cd-426f-9b36-4bb0decd13bb",{}]
+2026-08-26 12:13:44,603  ocpp   CP_1: send [2,"eb4f5ba1-69c9-468e-a7e3-6cfca01115f9","StopTransaction",{"meterStop":10,"timestamp":"2026-08-26T10:13:44.601968+00:00","transactionId":1,"reason":"Local"}]
+2026-08-26 12:13:44,606  ocpp   CP_1: receive message [3,"eb4f5ba1-69c9-468e-a7e3-6cfca01115f9",{}]
+2026-08-26 12:13:44,607  cp     StopTransaction(tx=1, reason=Local)
+2026-08-26 12:13:44,607  cp     state -> Available (NoError)
+2026-08-26 12:13:44,608  ocpp   CP_1: send [2,"2167d247-1dd7-4610-917b-89d08d6115c8","StatusNotification",{"connectorId":1,"errorCode":"NoError","status":"Available","timestamp":"2026-08-26T10:13:44.607794+00:00"}]
+2026-08-26 12:13:44,611  ocpp   CP_1: receive message [3,"2167d247-1dd7-4610-917b-89d08d6115c8",{}]
