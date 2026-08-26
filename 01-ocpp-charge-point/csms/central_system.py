@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
+import json
 from datetime import datetime, timezone
 
 import websockets
@@ -29,6 +30,7 @@ from ocpp.v16.enums import (
     ChargingProfilePurposeType,
     ChargingRateUnitType,
     RegistrationStatus,
+    DataTransferStatus,
 )
 
 LOG = logging.getLogger("csms")
@@ -45,6 +47,7 @@ def utcnow() -> str:
 class CentralSystem(OcppChargePoint):
     """Server-side view of ONE connected charge point.
     服务端视角下的单个已连接充电桩。"""
+    VENDOR_ID="de.example.depot"
 
     def __init__(self, cp_id: str, connection):
         super().__init__(cp_id, connection)
@@ -89,6 +92,14 @@ class CentralSystem(OcppChargePoint):
         self.next_tx_id += 1
         self.transactions[tx_id] = id_tag
         LOG.info("StartTransaction c%s idTag=%s -> tx=%s", connector_id, id_tag, tx_id)
+        # An @on handler must return the CALLRESULT synchronously, so the
+        # outbound DataTransfer is scheduled rather than awaited — awaiting here
+        # would deadlock: the reply the charge point is waiting for is the value
+        # this function has not returned yet.
+        # @on 处理器必须同步返回 CALLRESULT，所以往外发的 DataTransfer 只能调度、
+        # 不能 await —— 在这里 await 会死锁: 桩正在等的那个响应，
+        # 正是这个还没返回的函数的返回值。
+        asyncio.create_task(self.send_depot_assignment(tx_id, id_tag))
         return call_result.StartTransaction(
             transaction_id=tx_id,
             id_tag_info={"status": AuthorizationStatus.accepted},
@@ -110,6 +121,24 @@ class CentralSystem(OcppChargePoint):
             )
             LOG.info("MeterValues c%s: %s", connector_id, readings)
         return call_result.MeterValues()
+
+
+    @on(Action.data_transfer)
+    def on_data_transfer(self, vendor_id, message_id=None, data=None,**kwargs):
+        if vendor_id != self.VENDOR_ID:
+            LOG.warning("Unknown vendor_id:%s",vendor_id)
+            return call_result.DataTransfer(status=DataTransferStatus.unknown_vendor_id)
+        if message_id != "DepotSlotStatus":
+            return call_result.DataTransfer(status=DataTransferStatus.unknown_message_id)
+        try:
+            payload = json.loads(data or "{}")
+        except json.JSONDecodeError:
+            LOG.warning("Unknown payload format")
+            return call_result.DataTransfer(status=DataTransferStatus.rejected)
+        LOG.info("DepotSlotStatus: slot=%s bus=%s depart=%s soc=%s%%",
+                 payload.get("slot"), payload.get("busId"),
+                      payload.get("departAt"), payload.get("targetSoc"))                                          # 把四个字段打出来
+        return call_result.DataTransfer(status=DataTransferStatus.accepted)
 
     # ---------------------------------------------------------------- #
     # Operator actions  (CSMS -> charge point)                          #
@@ -146,6 +175,52 @@ class CentralSystem(OcppChargePoint):
     async def remote_start(self, id_tag: str = "DEADBEEF") -> None:
         resp = await self.call(call.RemoteStartTransaction(id_tag=id_tag))
         LOG.info("RemoteStartTransaction -> %s", resp.status)
+
+    async def send_depot_assignment(self, tx_id: int, id_tag: str) -> None:
+        """Tell the station which bus this transaction belongs to.
+        告诉桩这次交易对应哪辆车。
+
+        The mirror image of the station's DepotSlotStatus, and the reason to
+        implement both directions: DataTransfer is symmetric, and a depot needs
+        it that way. The station knows which bay is occupied; only the operator's
+        scheduling system knows which vehicle was rostered to it and when it has
+        to leave. Neither side can answer the question alone.
+        它是桩那条 DepotSlotStatus 的镜像，也是两个方向都要实现的理由:
+        DataTransfer 本来就是双向的，而场站确实需要双向。桩知道哪个车位有车；
+        只有运营方的排班系统知道排的是哪辆、几点要走。任何一端都答不全。
+
+        A different messageId under the same vendorId, so a station that
+        understands the namespace but not this particular message can say
+        UnknownMessageId — a distinction worth keeping, because "I do not know
+        your company" and "I know your company but not this message" call for
+        very different fixes.
+        同一个 vendorId 下用不同的 messageId，这样一个认识命名空间、
+        却不认识这条消息的桩可以回 UnknownMessageId —— 这个区分值得保留，
+        因为"不认识你这家公司"和"认识公司但不认识这条消息"要修的地方完全不同。
+        """
+        try:
+            resp = await self.call(call.DataTransfer(
+                vendor_id=self.VENDOR_ID,
+                message_id="DepotSlotAssignment",
+                data=json.dumps({
+                    "slot": 7,
+                    "busId": "EB123",
+                    "departAt": "06:35",
+                    "targetSoc": 90,
+                    "transactionId": tx_id,
+                    "idTag": id_tag,
+                }),
+            ))
+        except (websockets.exceptions.WebSocketException, OSError,
+                asyncio.TimeoutError):
+            LOG.warning("DepotSlotAssignment not delivered: link is down")
+            return
+
+        if resp.status == DataTransferStatus.accepted:
+            LOG.info("DepotSlotAssignment tx=%s -> %s", tx_id, resp.status)
+        else:
+            LOG.warning("DepotSlotAssignment tx=%s -> %s  "
+                        "(station did not process it)", tx_id, resp.status)
 
     # ------------------------------------------------------------------
     # TODO(you) — Stage 1, day 4

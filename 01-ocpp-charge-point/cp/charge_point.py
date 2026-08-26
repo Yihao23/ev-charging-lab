@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
+import json
 from collections import deque
 from datetime import datetime, timezone
 
@@ -36,12 +37,20 @@ from ocpp.v16.enums import (
     RemoteStartStopStatus,
     ResetStatus,
     UnitOfMeasure,
+    DataTransferStatus,
 )
 
 from cp import profile as profile_mod
 from cp.state_machine import ConnectorStateMachine
 
 LOG = logging.getLogger("cp")
+
+# The namespace the depot extension is written in. Reverse-DNS as OCPP
+# recommends, so two vendors' DataTransfers can never be confused for each
+# other — the same job the ISO 15118 URNs do for XSDs.
+# 场站扩展所用的命名空间。按 OCPP 推荐用反向域名，这样两家厂商的 DataTransfer
+# 永远不会被混淆 —— 和 ISO 15118 的 URN 对 XSD 起的作用是同一件事。
+DEPOT_VENDOR_ID = "de.example.depot"
 
 # Simulated hardware constants.  模拟硬件常量。
 NOMINAL_VOLTAGE_V = 230.0
@@ -223,6 +232,7 @@ class ChargePoint(OcppChargePoint):
         self.transaction_id = resp.transaction_id
         self.tx_started_at = asyncio.get_running_loop().time()
         LOG.info("StartTransaction -> transactionId=%s", self.transaction_id)
+        await self.send_depot_status()
         await self.notify_status(S.charging)
 
     async def stop_transaction(self, reason: str = "Local") -> None:
@@ -349,6 +359,70 @@ class ChargePoint(OcppChargePoint):
 
         self._enqueue(sample)
 
+    async def send_depot_status(self) -> None:
+        """Report which bus is in which bay, over OCPP's own extension point.
+        通过 OCPP 自己的扩展点，报告哪辆车停在哪个车位。
+
+        None of these fields exist in OCPP. They are fleet-operations data —
+        the departure time comes from the transit operator's scheduling system,
+        not from the charger — and a protocol used by millions of passenger cars
+        has no business carrying a field that only a few thousand bus depots
+        need. That is exactly what DataTransfer is for: a vendorId namespaces
+        the vocabulary, and a station that does not know the namespace answers
+        UnknownVendorId instead of guessing.
+        这些字段 OCPP 里一个都没有。它们属于车队调度 —— 发车时间来自运营公司的排班
+        系统，不来自充电桩 —— 而一个服务几亿辆乘用车的协议，不该为几千个公交场站
+        携带字段。这正是 DataTransfer 的用途: vendorId 划出词汇的命名空间，
+        不认识这个命名空间的一端回 UnknownVendorId，而不是瞎猜。
+
+        Sent after StartTransaction, not before, so the payload can carry the
+        transactionId. DataTransfer in OCPP 1.6 has only vendorId, messageId and
+        data — no connectorId, no transactionId — so a message sent earlier is
+        one the backend cannot tie to the session that follows. The cost is that
+        the depot data arrives too late to influence authorisation. OCPP 2.0.1
+        removes the dilemma by hanging customData on the business message itself.
+        放在 StartTransaction 之后而不是之前，是为了让载荷能带上 transactionId。
+        OCPP 1.6 的 DataTransfer 只有 vendorId/messageId/data 三个字段，
+        没有 connectorId 也没有 transactionId，所以更早发出的消息，后台无法和
+        随后的交易关联起来。代价是场站数据到得太晚，影响不了授权决策。
+        OCPP 2.0.1 把 customData 挂在业务消息上，就没有这个两难。
+
+        Not queued when offline, unlike metering. A meter sample records energy
+        that was physically delivered — dropping it does not un-deliver it, it
+        just means nobody can bill for it. This is a snapshot of who is standing
+        where, and replaying a stale one after a reconnect is worse than sending
+        nothing: the backend would believe a bus is still in bay 7 long after it
+        drove away.
+        离线时不入队，和计量不同。计量采样记录的是已经物理送出去的电 —— 丢掉它
+        并不能把电收回来，只是没人能为它计费。而这是一张"谁停在哪"的快照，
+        重连后补发一张过期的比不发更糟: 后台会以为车还在 7 号位，其实早开走了。
+        """
+        if not self._online:
+            return
+
+        try:
+            resp = await self.call(call.DataTransfer(
+                vendor_id=DEPOT_VENDOR_ID,
+                message_id="DepotSlotStatus",
+                data=json.dumps({
+                    "slot": 7,
+                    "busId": "EB123",
+                    "departAt": "06:35",
+                    "targetSoc": 90,
+                    "transactionId": self.transaction_id,
+                }),
+            ))
+        except (websockets.exceptions.WebSocketException, OSError,
+                   asyncio.TimeoutError):
+            self._online = False
+            return
+        if resp.status == DataTransferStatus.accepted:
+            LOG.info("DepotSlotStatus -> %s", resp.status)
+        else:
+            LOG.warning("DepotSlotStatus -> %s  (backend did not process it)",resp.status)
+
+
+
     def _enqueue(self, sample: dict) -> None:
         """Buffer a sample, dropping the OLDEST first when full.
         缓存一条采样，满了先丢**最旧**的。
@@ -464,6 +538,51 @@ class ChargePoint(OcppChargePoint):
             return call_result.RemoteStopTransaction(status=RemoteStartStopStatus.rejected)
         asyncio.create_task(self.stop_transaction(reason="Remote"))
         return call_result.RemoteStopTransaction(status=RemoteStartStopStatus.accepted)
+
+    @on(Action.data_transfer)
+    def on_data_transfer(self, vendor_id, message_id=None, data=None, **kwargs):
+        """Accept the backend's depot assignment, or say precisely why not.
+        接受后台下发的车位分配，或者说清楚为什么不接受。
+
+        The four status codes are not decoration. UnknownVendorId and
+        UnknownMessageId both mean the message was not processed, but they point
+        at different fixes: the first says nobody here speaks that namespace, the
+        second says the namespace is right and this particular message is not
+        implemented. Collapsing them into Rejected — which most implementations
+        do — throws away the only clue the operator gets.
+        四个状态码不是摆设。UnknownVendorId 和 UnknownMessageId 都表示消息没被处理，
+        但指向完全不同的修法: 前者说这边没人懂那个命名空间，后者说命名空间对、
+        只是这条消息没实现。把它们合并成 Rejected(大多数实现就是这么干的),
+        等于扔掉了运维唯一能拿到的线索。
+
+        `data` came off the network, so a malformed payload is a Rejected, not a
+        traceback. A charge point that dies on one bad string takes the whole
+        bay down with it.
+        `data` 来自网络，畸形载荷该回 Rejected 而不是抛异常。
+        一台因为一个坏字符串就崩掉的桩，会把整个车位一起拖下水。
+        """
+        if vendor_id != DEPOT_VENDOR_ID:
+            LOG.warning("DataTransfer from unknown vendor %s", vendor_id)
+            return call_result.DataTransfer(
+                status=DataTransferStatus.unknown_vendor_id)
+
+        if message_id != "DepotSlotAssignment":
+            LOG.warning("DataTransfer %s/%s not implemented here",
+                        vendor_id, message_id)
+            return call_result.DataTransfer(
+                status=DataTransferStatus.unknown_message_id)
+
+        try:
+            payload = json.loads(data or "{}")
+        except json.JSONDecodeError:
+            LOG.warning("DepotSlotAssignment carried malformed JSON")
+            return call_result.DataTransfer(status=DataTransferStatus.rejected)
+
+        LOG.info("DepotSlotAssignment: slot=%s bus=%s depart=%s soc=%s%% tx=%s",
+                 payload.get("slot"), payload.get("busId"),
+                 payload.get("departAt"), payload.get("targetSoc"),
+                 payload.get("transactionId"))
+        return call_result.DataTransfer(status=DataTransferStatus.accepted)
 
     @on(Action.reset)
     def on_reset(self, type, **kwargs):

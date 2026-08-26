@@ -107,6 +107,72 @@ protocol logic you can only observe over a socket.**
 
 ---
 
+## Extending OCPP without breaking it / 在不破坏 OCPP 的前提下扩展它
+
+A bus depot needs to know which vehicle is in which bay, when it has to leave,
+and what state of charge it needs by then. None of those fields exist in OCPP,
+and none of them should: they are fleet-operations data, the departure time
+comes from the operator's scheduling system rather than from the charger, and a
+protocol serving hundreds of millions of passenger cars has no business carrying
+a field that a few thousand depots need.
+公交场站需要知道哪辆车停在哪个车位、几点要走、走之前要充到多少电。这些字段
+OCPP 里一个都没有，也不该有: 它们属于车队调度，发车时间来自运营方的排班系统
+而不是充电桩，而一个服务几亿辆乘用车的协议，不该为几千个场站携带字段。
+
+`DataTransfer` is the sanctioned way in — implemented here in both directions,
+because a depot genuinely needs both. The station knows which bay is occupied;
+only the backend knows which vehicle was rostered to it.
+`DataTransfer` 是官方认可的入口 —— 这里两个方向都实现了，因为场站确实两边都需要。
+桩知道哪个车位有车，只有后台知道排的是哪辆车。
+
+```
+CP  -> CSMS   de.example.depot / DepotSlotStatus       slot, busId, departAt, targetSoc, transactionId
+CSMS -> CP    de.example.depot / DepotSlotAssignment   ... plus idTag
+```
+
+**`vendorId` is not `chargePointVendor`.** The latter says who built the
+hardware and is sent once at boot; the former namespaces the *vocabulary* of one
+message, and a single station can speak several — its manufacturer's, the
+operator's, a roaming platform's. It does the same job for OCPP that a URN does
+for an XSD.
+**`vendorId` 不是 `chargePointVendor`。** 后者说这台硬件是谁造的、开机时发一次；
+前者是单条消息所用**词汇**的命名空间，一台桩可以同时说好几种 ——
+厂商的、运营方的、漫游平台的。它对 OCPP 起的作用，和 URN 对 XSD 是同一件事。
+
+Both ends use all four status codes rather than collapsing everything into
+`Rejected`, because they point at different fixes:
+两端都用满了四个状态码，而不是把一切都塞进 `Rejected`，因为它们指向不同的修法:
+
+| Status | Meaning | What to fix |
+|---|---|---|
+| `UnknownVendorId` | nobody here speaks that namespace | wire up the extension, or check the spelling |
+| `UnknownMessageId` | namespace is right, this message is not implemented | implement it, or stop sending it |
+| `Rejected` | understood, but this payload is not acceptable | look at the payload |
+| `Accepted` | processed | — |
+
+⚠️ **The failure mode is silence.** The CALL goes out, a CALLRESULT comes back,
+and the sender's log reads as success — but `UnknownVendorId` means the peer
+never processed it and the feature simply does nothing. Project 04's rule
+**R012** exists to catch exactly that; no other rule could, because R002 needs a
+CALLERROR frame and R003's status list never included it.
+⚠️ **它的失败方式是静默。** 请求发出去了、响应也回来了、发送方日志一切正常 ——
+但 `UnknownVendorId` 意味着对端根本没处理，功能就是没生效。项目 04 的 **R012**
+就是为抓这个而写的；别的规则抓不到，因为 R002 要 CALLERROR 帧，
+而 R003 的状态清单里从来没有它。
+
+⚠️ **`data` is a string, not an object.** OCPP declares it that way on purpose —
+typing it would mean defining a schema for content OCPP cannot know — so the
+payload is JSON inside JSON, and the backend cannot validate it. ISO 15118's
+`ParameterSet` makes the opposite trade: typed values the peer can check, at the
+cost of only six types. Two answers to the same question, for two different
+trust relationships.
+⚠️ **`data` 是字符串不是对象。** OCPP 故意这么定 —— 给它定类型就等于要为
+OCPP 无法预知的内容定义 schema —— 于是载荷是 JSON 套 JSON，后台没法校验。
+ISO 15118 的 `ParameterSet` 做了相反的取舍: 带类型、对端能校验，代价是只有六种类型。
+同一个问题的两种答案，对应两种不同的信任关系。
+
+---
+
 ## Gotchas you will hit / 你一定会踩的坑
 
 | Symptom | Cause | 中文 |
