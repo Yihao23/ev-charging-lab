@@ -15,7 +15,18 @@ set -euo pipefail
 
 STACK="${STACK:-$HOME/codespace/iso15118}"
 OUTDIR="${OUTDIR:-$HOME/codespace/ev-charging-lab/03-iso15118-analysis/captures}"
-OUTFILE="${1:-session-02.pcap}"
+# Refuse to overwrite an existing capture. The default used to be
+# session-02.pcap, which is a committed artefact that REPORT-01 and
+# session-02-decoded.md both walk through byte by byte — running the script
+# without an argument silently replaced it and invalidated both.
+# 拒绝覆盖已存在的抓包。默认值原本是 session-02.pcap，而那是一份已提交的产物,
+# REPORT-01 和 session-02-decoded.md 都在逐字节引用它 —— 不带参数跑一次脚本
+# 就把它悄悄换掉了，两份文档随之作废。
+OUTFILE="${1:-}"
+if [ -z "$OUTFILE" ]; then
+  echo "usage: $(basename "$0") <name.pcap>" >&2
+  exit 2
+fi
 CAPNAME="v2gcap-run"
 
 [ -d "$STACK" ] || { echo "stack not found at $STACK"; exit 1; }
@@ -27,6 +38,11 @@ if ! docker image inspect v2gcap >/dev/null 2>&1; then
   printf 'FROM alpine:latest\nRUN apk add --no-cache tcpdump\n' | docker build -q -t v2gcap - >/dev/null
 fi
 
+if [ -e "$OUTDIR/$OUTFILE" ]; then
+  echo "$OUTDIR/$OUTFILE already exists — pick another name" >&2
+  exit 2
+fi
+
 docker rm -f "$CAPNAME" >/dev/null 2>&1 || true
 
 echo "==> starting SECC + redis (EVCC stays down so the capture can be armed first)"
@@ -36,6 +52,16 @@ cd "$STACK"
 COMPOSE_FILES=(-f docker-compose.yml -f docker-compose.dev.yml)
 if [ -n "${COMPOSE_EXTRA:-}" ]; then COMPOSE_FILES+=(-f "$COMPOSE_EXTRA"); fi
 docker compose "${COMPOSE_FILES[@]}" up -d --force-recreate secc redis >/dev/null
+
+# Recreate the EVCC too, but do not start it: `docker start` on the old
+# container would silently reuse the definition it was built with, so any
+# volume or environment an override adds for the EVCC would never apply.
+# Recreating without starting keeps the ordering — capture armed before the
+# session begins — while still picking up the overrides.
+# EVCC 也要重建，但先别启动: 对旧容器 `docker start` 会沿用它创建时的定义，
+# override 给 EVCC 加的挂载或环境变量根本不会生效。重建而不启动，
+# 既保住了"先架抓包再开会话"的顺序，又能吃到 override。
+docker compose "${COMPOSE_FILES[@]}" create --force-recreate evcc >/dev/null 2>&1
 
 # Wait on the listener being ready, not on a fixed number of seconds.
 # NOTE: `docker logs ... | grep -q` looks nicer but is broken under

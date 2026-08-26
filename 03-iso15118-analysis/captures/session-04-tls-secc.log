@@ -1,0 +1,206 @@
+DEBUG    2026-08-26 11:20:55,801 - asyncio (54): Using selector: EpollSelector
+INFO    2026-08-26 11:20:55,802 - iso15118.secc.secc_settings (112): SECC settings:
+INFO    2026-08-26 11:20:55,802 - iso15118.secc.secc_settings (114): NETWORK_INTERFACE             : eth0
+INFO    2026-08-26 11:20:55,802 - iso15118.secc.secc_settings (114): LOG_LEVEL                     : DEBUG
+INFO    2026-08-26 11:20:55,802 - iso15118.secc.secc_settings (114): SECC_ENFORCE_TLS              : True
+INFO    2026-08-26 11:20:55,802 - iso15118.secc.secc_settings (114): FREE_CHARGING_SERVICE         : False
+INFO    2026-08-26 11:20:55,802 - iso15118.secc.secc_settings (114): FREE_CERT_INSTALL_SERVICE     : True
+INFO    2026-08-26 11:20:55,802 - iso15118.secc.secc_settings (114): USE_CPO_BACKEND               : False
+INFO    2026-08-26 11:20:55,802 - iso15118.secc.secc_settings (114): ALLOW_CERT_INSTALL_SERVICE    : True
+INFO    2026-08-26 11:20:55,802 - iso15118.secc.secc_settings (114): PROTOCOLS                     : ['DIN_SPEC_70121', 'ISO_15118_2', 'ISO_15118_20_AC', 'ISO_15118_20_DC']
+INFO    2026-08-26 11:20:55,802 - iso15118.secc.secc_settings (114): AUTH_MODES                    : ['EIM', 'PNC']
+INFO    2026-08-26 11:20:55,802 - iso15118.secc.secc_settings (114): STANDBY_ALLOWED               : False
+INFO    2026-08-26 11:20:55,802 - iso15118.secc.secc_settings (114): PKI_PATH                      : /venv/lib/python3.10/site-packages/iso15118/shared/pki/
+INFO    2026-08-26 11:20:55,802 - iso15118.secc.secc_settings (114): MESSAGE_LOG_JSON              : True
+INFO    2026-08-26 11:20:55,802 - iso15118.secc.secc_settings (114): MESSAGE_LOG_EXI               : False
+INFO    2026-08-26 11:20:55,802 - iso15118.secc.secc_settings (114): ENABLE_TLS_1_3                : False
+DEBUG    2026-08-26 11:20:55,802 - iso15118.secc.controller.simulator (266): New Status: starting
+INFO    2026-08-26 11:20:56,346 - iso15118.shared.exi_codec (177): EXI Codec version: 1.55
+INFO    2026-08-26 11:20:56,346 - iso15118.secc (31): Starting 15118 version: 0.31.2
+INFO    2026-08-26 11:20:56,346 - iso15118.secc.comm_session_handler (235): Communication session handler started
+INFO    2026-08-26 11:20:56,346 - iso15118.secc.transport.udp_server (137): UDP server socket ready
+INFO    2026-08-26 11:20:56,346 - iso15118.secc.transport.udp_server (123): UDP server started at address FF02::1%eth0 and port 15118
+DEBUG    2026-08-26 11:20:56,357 - iso15118.secc.controller.simulator (266): New Status: ready
+DEBUG    2026-08-26 11:21:14,149 - iso15118.secc.transport.udp_server (158): Message received from ('fe80::6413:5bff:fe69:2225', 58256, 0, 2): 01fe9000000000020000
+INFO    2026-08-26 11:21:14,149 - iso15118.secc.comm_session_handler (437): SDPRequest received: [Security: TLS, Protocol: TCP]
+INFO    2026-08-26 11:21:14,157 - iso15118.secc.transport.tcp_server (134): TLS server started at address fe80::8c29:ccff:fe46:6a93%eth0 and port 56771
+INFO    2026-08-26 11:21:14,168 - iso15118.secc.comm_session_handler (464): Sending SDPResponse: [ IP address: fe80::8c29:ccff:fe46:6a93, Port: 56771 , Security: TLS , Transport: TCP ]
+INFO    2026-08-26 11:21:14,188 - iso15118.secc.transport.udp_server (201): UDP server has been paused.
+INFO    2026-08-26 11:21:14,188 - iso15118.secc.comm_session_handler (284): TCP client connected, client address is ('fe80::6413:5bff:fe69:2225', 47672, 0, 2).
+INFO    2026-08-26 11:21:14,199 - iso15118.shared.comm_session (344): Starting a new communication session
+INFO    2026-08-26 11:21:14,199 - iso15118.shared.states (139): Entered state SupportedAppProtocol
+DEBUG    2026-08-26 11:21:14,199 - iso15118.shared.states (143): Waiting for up to 20.0 s
+INFO    2026-08-26 11:21:14,298 - iso15118.shared.exi_codec (302): Decoded message (ns=urn:iso:15118:2:2010:AppProtocol): {"supportedAppProtocolReq":{"AppProtocol":[{"ProtocolNamespace":"urn:iso:15118:2:2013:MsgDef","VersionNumberMajor":2,"VersionNumberMinor":0,"SchemaID":1,"Priority":1}]}}
+INFO    2026-08-26 11:21:14,298 - iso15118.shared.comm_session (235): supportedAppProtocolReq received
+INFO    2026-08-26 11:21:14,299 - iso15118.shared.exi_codec (248): Message to encode (ns=urn:iso:15118:2:2010:AppProtocol): {"supportedAppProtocolRes": {"ResponseCode": "OK_SuccessfulNegotiation", "SchemaID": 1}}
+INFO    2026-08-26 11:21:14,318 - iso15118.secc.states.sap_states (147): Chosen protocol: ISO_15118_2
+INFO    2026-08-26 11:21:14,318 - iso15118.shared.comm_session (431): Sent supportedAppProtocolRes
+INFO    2026-08-26 11:21:14,318 - iso15118.secc.controller.simulator (766): iso15118 state: SupportedAppProtocol
+INFO    2026-08-26 11:21:14,318 - iso15118.shared.states (139): Entered state SessionSetup
+DEBUG    2026-08-26 11:21:14,318 - iso15118.shared.states (143): Waiting for up to 20.0 s
+INFO    2026-08-26 11:21:14,487 - iso15118.shared.exi_codec (302): Decoded message (ns=urn:iso:15118:2:2013:MsgDef): {"V2G_Message":{"Header":{"SessionID":"00"},"Body":{"SessionSetupReq":{"EVCCID":"66135B692225"}}}}
+INFO    2026-08-26 11:21:14,487 - iso15118.shared.comm_session (235): SessionSetupReq received
+INFO    2026-08-26 11:21:14,488 - iso15118.shared.exi_codec (248): Message to encode (ns=urn:iso:15118:2:2013:MsgDef): {"V2G_Message": {"Header": {"SessionID": "66A5C34A7C4083DE"}, "Body": {"SessionSetupRes": {"ResponseCode": "OK_NewSessionEstablished", "EVSEID": "UK123E1234", "EVSETimeStamp": 1787743274}}}}
+INFO    2026-08-26 11:21:14,525 - iso15118.shared.comm_session (431): Sent SessionSetupRes
+INFO    2026-08-26 11:21:14,525 - iso15118.secc.controller.simulator (766): iso15118 state: SessionSetup
+INFO    2026-08-26 11:21:14,525 - iso15118.shared.states (139): Entered state ServiceDiscovery
+DEBUG    2026-08-26 11:21:14,525 - iso15118.shared.states (143): Waiting for up to 60.0 s
+INFO    2026-08-26 11:21:14,619 - iso15118.shared.exi_codec (302): Decoded message (ns=urn:iso:15118:2:2013:MsgDef): {"V2G_Message":{"Header":{"SessionID":"66A5C34A7C4083DE"},"Body":{"ServiceDiscoveryReq":{}}}}
+INFO    2026-08-26 11:21:14,619 - iso15118.shared.comm_session (235): ServiceDiscoveryReq received
+INFO    2026-08-26 11:21:14,620 - iso15118.shared.exi_codec (248): Message to encode (ns=urn:iso:15118:2:2013:MsgDef): {"V2G_Message": {"Header": {"SessionID": "66A5C34A7C4083DE"}, "Body": {"ServiceDiscoveryRes": {"ResponseCode": "OK", "PaymentOptionList": {"PaymentOption": ["ExternalPayment", "Contract"]}, "ChargeService": {"ServiceID": 1, "ServiceName": "AC_DC_Charging", "ServiceCategory": "EVCharging", "FreeService": false, "SupportedEnergyTransferMode": {"EnergyTransferMode": ["DC_extended", "AC_three_phase_core"]}}, "ServiceList": {"Service": [{"ServiceID": 2, "ServiceName": "Certificate", "ServiceCategory": "ContractCertificate", "FreeService": true}]}}}}}
+INFO    2026-08-26 11:21:14,651 - iso15118.shared.comm_session (431): Sent ServiceDiscoveryRes
+INFO    2026-08-26 11:21:14,651 - iso15118.secc.controller.simulator (766): iso15118 state: ServiceDiscovery
+INFO    2026-08-26 11:21:14,725 - iso15118.shared.exi_codec (302): Decoded message (ns=urn:iso:15118:2:2013:MsgDef): {"V2G_Message":{"Header":{"SessionID":"66A5C34A7C4083DE"},"Body":{"PaymentServiceSelectionReq":{"SelectedPaymentOption":"Contract","SelectedServiceList":{"SelectedService":[{"ServiceID":1}]}}}}}
+INFO    2026-08-26 11:21:14,725 - iso15118.shared.comm_session (235): PaymentServiceSelectionReq received
+INFO    2026-08-26 11:21:14,725 - iso15118.shared.states (139): Entered state PaymentServiceSelection
+DEBUG    2026-08-26 11:21:14,725 - iso15118.shared.states (143): Waiting for up to 60.0 s
+DEBUG    2026-08-26 11:21:14,725 - iso15118.secc.states.iso15118_2_states (626): EVCC chose authorization option Contract
+INFO    2026-08-26 11:21:14,725 - iso15118.shared.exi_codec (248): Message to encode (ns=urn:iso:15118:2:2013:MsgDef): {"V2G_Message": {"Header": {"SessionID": "66A5C34A7C4083DE"}, "Body": {"PaymentServiceSelectionRes": {"ResponseCode": "OK"}}}}
+INFO    2026-08-26 11:21:14,758 - iso15118.shared.comm_session (431): Sent PaymentServiceSelectionRes
+INFO    2026-08-26 11:21:14,758 - iso15118.secc.controller.simulator (766): iso15118 state: PaymentServiceSelection
+INFO    2026-08-26 11:21:14,896 - iso15118.shared.exi_codec (302): Decoded message (ns=urn:iso:15118:2:2013:MsgDef): {"V2G_Message":{"Header":{"SessionID":"66A5C34A7C4083DE"},"Body":{"PaymentDetailsReq":{"eMAID":"UKSWI123456791A","ContractSignatureCertChain":{"Certificate":"MIICZDCCAgmgAwIBAgICMEQwCgYIKoZIzj0EAwIwVjEiMCAGA1UEAwwZUEtJLUV4dF9DUlRfTU9fU1VCMl9WQUxJRDEPMA0GA1UECgwGU3dpdGNoMQswCQYDVQQGEwJVSzESMBAGCgmSJomT8ixkARkWAk1PMB4XDTI2MDgyMzA4MDEzNVoXDTI4MDgyMjA4MDEzNVowTDEYMBYGA1UEAwwPVUtTV0kxMjM0NTY3OTFBMQ8wDQYDVQQKDAZTd2l0Y2gxCzAJBgNVBAYTAlVLMRIwEAYKCZImiZPyLGQBGRYCTU8wWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAS79tNUOfNl5hMFdsPun2CiYD/AJx7QxlNACRRCQRYGC0PVSa6xUc/YKjevci0Udwibblh6zRsFFaS1awL3oFT1o4HQMIHNMAwGA1UdEwEB/wQCMAAwDgYDVR0PAQH/BAQDAgPoMB0GA1UdDgQWBBQn0HWE5PRv6I2nebdye/Z2uAKXvDBtBggrBgEFBQcBAQRhMF8wJAYIKwYBBQUHMAGGGGh0dHBzOi8vd3d3LmV4YW1wbGUuY29tLzA3BggrBgEFBQcwAoYraHR0cHM6Ly93d3cuZXhhbXBsZS5jb20vSW50ZXJtZWRpYXRlLUNBLmNlcjAfBgNVHSMEGDAWgBQX+9SXfSOAOiUqNtqQop2/TScbZDAKBggqhkjOPQQDAgNJADBGAiEA1vGkqimnFIFlir1Ys5ZvtNWeEHGsKC47A4efWkiyDFsCIQC3kxpxeLf0d0PuNXHTaDmOYxU2oDH3gL4pD08zZDxFhg==","SubCertificates":{"Certificate":["MIICczCCAhmgAwIBAgICMEMwCgYIKoZIzj0EAwIwVjEiMCAGA1UEAwwZUEtJLUV4dF9DUlRfTU9fU1VCMV9WQUxJRDEPMA0GA1UECgwGU3dpdGNoMQswCQYDVQQGEwJVSzESMBAGCgmSJomT8ixkARkWAk1PMB4XDTI2MDgyMzA4MDEzNVoXDTMwMDgyMjA4MDEzNVowVjEiMCAGA1UEAwwZUEtJLUV4dF9DUlRfTU9fU1VCMl9WQUxJRDEPMA0GA1UECgwGU3dpdGNoMQswCQYDVQQGEwJVSzESMBAGCgmSJomT8ixkARkWAk1PMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAErJ8x1fgckez30CHFS0LY+GdY5Ay7bzSC9KL5C/hRi2rd/9317lST1tt7mPXxBTzNpI5ypInwUQgFuUIlSjbKN6OB1jCB0zASBgNVHRMBAf8ECDAGAQH/AgEAMA4GA1UdDwEB/wQEAwIBxjAdBgNVHQ4EFgQUF/vUl30jgDolKjbakKKdv00nG2QwbQYIKwYBBQUHAQEEYTBfMCQGCCsGAQUFBzABhhhodHRwczovL3d3dy5leGFtcGxlLmNvbS8wNwYIKwYBBQUHMAKGK2h0dHBzOi8vd3d3LmV4YW1wbGUuY29tL0ludGVybWVkaWF0ZS1DQS5jZXIwHwYDVR0jBBgwFoAU3BBDMRSrN7v0f87gPAL4GAh7s24wCgYIKoZIzj0EAwIDSAAwRQIhAPyC4JpmlIPs3t1/1X5hGFqsEe1WkH66A429qaI4l7gZAiBp6eNzvl0tzm8hgYHpzaPXEReFt4rJalj7fvXYeCBT4A==","MIICYjCCAgigAwIBAgICMEIwCgYIKoZIzj0EAwIwRTERMA8GA1UEAwwITU9Sb290Q0ExDzANBgNVBAoMBlN3aXRjaDELMAkGA1UEBhMCVUsxEjAQBgoJkiaJk/IsZAEZFgJNTzAeFw0yNjA4MjMwODAxMzVaFw0zMDA4MjIwODAxMzVaMFYxIjAgBgNVBAMMGVBLSS1FeHRfQ1JUX01PX1NVQjFfVkFMSUQxDzANBgNVBAoMBlN3aXRjaDELMAkGA1UEBhMCVUsxEjAQBgoJkiaJk/IsZAEZFgJNTzBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABNuVt1FZi2oHsTibaNRC03yBtLnH8fQyuoL9LntcO/PzpPcQHuoblr6s4Wl9vZ9Lax2BAi4QGGooAQDNIqgADJWjgdYwgdMwEgYDVR0TAQH/BAgwBgEB/wIBATAOBgNVHQ8BAf8EBAMCAQYwHQYDVR0OBBYEFNwQQzEUqze79H/O4DwC+BgIe7NuMG0GCCsGAQUFBwEBBGEwXzAkBggrBgEFBQcwAYYYaHR0cHM6Ly93d3cuZXhhbXBsZS5jb20vMDcGCCsGAQUFBzAChitodHRwczovL3d3dy5leGFtcGxlLmNvbS9JbnRlcm1lZGlhdGUtQ0EuY2VyMB8GA1UdIwQYMBaAFDcxG/yhj63xqEnFy4pT2iqRV1JxMAoGCCqGSM49BAMCA0gAMEUCIAxwgZEESCGpwuj+/kTuW0wI47I+Qz3NRCvyxZucm92WAiEA2JW/JHMGWQUpLnYd8dpvWYFv6ywuaRHqLeMQE/G5IJI="]}}}}}}
+INFO    2026-08-26 11:21:14,896 - iso15118.shared.comm_session (235): PaymentDetailsReq received
+INFO    2026-08-26 11:21:14,896 - iso15118.shared.states (139): Entered state PaymentDetails
+DEBUG    2026-08-26 11:21:14,896 - iso15118.shared.states (143): Waiting for up to 60.0 s
+DEBUG    2026-08-26 11:21:14,899 - iso15118.shared.security (469): Subject: <Name(CN=UKSWI123456791A,O=Switch,C=UK,DC=MO)>
+DEBUG    2026-08-26 11:21:14,899 - iso15118.shared.security (470): Issuer: <Name(CN=PKI-Ext_CRT_MO_SUB2_VALID,O=Switch,C=UK,DC=MO)>
+DEBUG    2026-08-26 11:21:14,899 - iso15118.shared.security (471): Serial number: 12356
+/venv/lib/python3.10/site-packages/iso15118/shared/security.py:473: CryptographyDeprecationWarning: Properties that return a naïve datetime object have been deprecated. Please switch to not_valid_before_utc.
+  f"Validity: {der_cert.not_valid_before} - {der_cert.not_valid_after}"
+/venv/lib/python3.10/site-packages/iso15118/shared/security.py:473: CryptographyDeprecationWarning: Properties that return a naïve datetime object have been deprecated. Please switch to not_valid_after_utc.
+  f"Validity: {der_cert.not_valid_before} - {der_cert.not_valid_after}"
+DEBUG    2026-08-26 11:21:14,901 - iso15118.shared.security (472): Validity: 2026-08-23 08:01:35 - 2028-08-22 08:01:35
+DEBUG    2026-08-26 11:21:14,903 - iso15118.shared.security (475): Fingerprint: c4:2c:b0:f6:88:f3:bb:31:a4:67:69:a1:ec:eb:05:28:79:40:91:fb:6d:5c:b8:29:a1:bf:97:5a:5e:f2:8f:41
+DEBUG    2026-08-26 11:21:14,903 - iso15118.shared.security (478): ===
+DEBUG    2026-08-26 11:21:14,903 - iso15118.shared.security (469): Subject: <Name(CN=PKI-Ext_CRT_MO_SUB2_VALID,O=Switch,C=UK,DC=MO)>
+DEBUG    2026-08-26 11:21:14,903 - iso15118.shared.security (470): Issuer: <Name(CN=PKI-Ext_CRT_MO_SUB1_VALID,O=Switch,C=UK,DC=MO)>
+DEBUG    2026-08-26 11:21:14,903 - iso15118.shared.security (471): Serial number: 12355
+DEBUG    2026-08-26 11:21:14,903 - iso15118.shared.security (472): Validity: 2026-08-23 08:01:35 - 2030-08-22 08:01:35
+DEBUG    2026-08-26 11:21:14,903 - iso15118.shared.security (475): Fingerprint: df:3c:02:5e:1b:c2:4f:18:f0:96:1c:5e:26:ff:8d:f6:92:50:ef:7e:a0:41:db:a1:85:07:4e:32:3a:2c:80:57
+DEBUG    2026-08-26 11:21:14,903 - iso15118.shared.security (478): ===
+DEBUG    2026-08-26 11:21:14,903 - iso15118.shared.security (469): Subject: <Name(CN=PKI-Ext_CRT_MO_SUB1_VALID,O=Switch,C=UK,DC=MO)>
+DEBUG    2026-08-26 11:21:14,903 - iso15118.shared.security (470): Issuer: <Name(CN=MORootCA,O=Switch,C=UK,DC=MO)>
+DEBUG    2026-08-26 11:21:14,903 - iso15118.shared.security (471): Serial number: 12354
+DEBUG    2026-08-26 11:21:14,903 - iso15118.shared.security (472): Validity: 2026-08-23 08:01:35 - 2030-08-22 08:01:35
+DEBUG    2026-08-26 11:21:14,903 - iso15118.shared.security (475): Fingerprint: 8d:4c:4f:da:ae:5b:32:a8:3b:e7:a2:b6:e3:ad:22:58:3b:b2:0f:37:0e:2a:d8:5a:93:1c:c9:b6:2d:35:f5:cc
+DEBUG    2026-08-26 11:21:14,903 - iso15118.shared.security (478): ===
+INFO    2026-08-26 11:21:14,904 - iso15118.secc.states.iso15118_2_states (962): Using MO root at /venv/lib/python3.10/site-packages/iso15118/shared/pki/iso15118_2/certs/moRootCACert.der
+/venv/lib/python3.10/site-packages/iso15118/shared/security.py:729: CryptographyDeprecationWarning: Properties that return a naïve datetime object have been deprecated. Please switch to not_valid_before_utc.
+  if cert.not_valid_before > now:
+/venv/lib/python3.10/site-packages/iso15118/shared/security.py:731: CryptographyDeprecationWarning: Properties that return a naïve datetime object have been deprecated. Please switch to not_valid_after_utc.
+  if cert.not_valid_after < now:
+INFO    2026-08-26 11:21:14,909 - iso15118.shared.exi_codec (248): Message to encode (ns=urn:iso:15118:2:2013:MsgDef): {"V2G_Message": {"Header": {"SessionID": "66A5C34A7C4083DE"}, "Body": {"PaymentDetailsRes": {"ResponseCode": "OK", "GenChallenge": "6w8kubX2dddCzpGUTP0z7Q==", "EVSETimeStamp": 1787743274}}}}
+INFO    2026-08-26 11:21:14,931 - iso15118.shared.comm_session (431): Sent PaymentDetailsRes
+INFO    2026-08-26 11:21:14,931 - iso15118.secc.controller.simulator (766): iso15118 state: PaymentDetails
+INFO    2026-08-26 11:21:14,932 - iso15118.shared.states (139): Entered state Authorization
+DEBUG    2026-08-26 11:21:14,932 - iso15118.shared.states (143): Waiting for up to 60.0 s
+INFO    2026-08-26 11:21:15,061 - iso15118.shared.exi_codec (302): Decoded message (ns=urn:iso:15118:2:2013:MsgDef): {"V2G_Message":{"Header":{"SessionID":"66A5C34A7C4083DE","Signature":{"SignedInfo":{"CanonicalizationMethod":{"Algorithm":"http://www.w3.org/TR/canonical-exi/"},"SignatureMethod":{"Algorithm":"http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha256"},"Reference":[{"URI":"#id1","Transforms":{"Transform":[{"Algorithm":"http://www.w3.org/TR/canonical-exi/"}]},"DigestMethod":{"Algorithm":"http://www.w3.org/2001/04/xmlenc#sha256"},"DigestValue":"/MHMPvnhUHwJpMfORLHLERrAXXDQni8998El6GAKlmg="}]},"SignatureValue":{"value":"jsQKdvfHMIiP9ZDY/ljp2Rh9laPcHRZW2sCmi3CptiwIbeE/y6llffhU58aMDKDQf5TW/lV64Lp0nK2FKbJzdA=="}}},"Body":{"AuthorizationReq":{"Id":"id1","GenChallenge":"6w8kubX2dddCzpGUTP0z7Q=="}}}}
+INFO    2026-08-26 11:21:15,063 - iso15118.shared.comm_session (235): AuthorizationReq received
+INFO    2026-08-26 11:21:15,063 - iso15118.shared.exi_codec (248): Message to encode (ns=urn:iso:15118:2:2013:MsgDef): {"AuthorizationReq": {"Id": "id1", "GenChallenge": "6w8kubX2dddCzpGUTP0z7Q=="}}
+DEBUG    2026-08-26 11:21:15,081 - iso15118.shared.security (906): Verifying digest for element with ID 'id1'
+DEBUG    2026-08-26 11:21:15,081 - iso15118.shared.security (919): 
+Received digest of reference with ID id1: FCC1CC3EF9E1507C09A4C7CE44B1CB111AC05D70D09E2F3DF7C125E8600A9668
+Calculated digest for reference: FCC1CC3EF9E1507C09A4C7CE44B1CB111AC05D70D09E2F3DF7C125E8600A9668
+=> Match: True
+DEBUG    2026-08-26 11:21:15,082 - iso15118.shared.security (932): Verifying signature value for SignedInfo element
+INFO    2026-08-26 11:21:15,082 - iso15118.shared.exi_codec (248): Message to encode (ns=http://www.w3.org/2000/09/xmldsig#): {"SignedInfo": {"CanonicalizationMethod": {"Algorithm": "http://www.w3.org/TR/canonical-exi/"}, "SignatureMethod": {"Algorithm": "http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha256"}, "Reference": [{"Transforms": {"Transform": [{"Algorithm": "http://www.w3.org/TR/canonical-exi/"}]}, "DigestMethod": {"Algorithm": "http://www.w3.org/2001/04/xmlenc#sha256"}, "DigestValue": "/MHMPvnhUHwJpMfORLHLERrAXXDQni8998El6GAKlmg=", "URI": "#id1"}]}}
+WARNING    2026-08-26 11:21:15,109 - iso15118.shared.security (999): Sub-CA and root CA certificates were not used to verify signatures along the certificate chain
+DEBUG    2026-08-26 11:21:15,109 - iso15118.shared.security (1004): Signature verified successfully
+INFO    2026-08-26 11:21:15,109 - iso15118.shared.exi_codec (248): Message to encode (ns=urn:iso:15118:2:2013:MsgDef): {"V2G_Message": {"Header": {"SessionID": "66A5C34A7C4083DE"}, "Body": {"AuthorizationRes": {"ResponseCode": "OK", "EVSEProcessing": "Finished"}}}}
+INFO    2026-08-26 11:21:15,138 - iso15118.shared.comm_session (431): Sent AuthorizationRes
+INFO    2026-08-26 11:21:15,138 - iso15118.secc.controller.simulator (766): iso15118 state: Authorization
+INFO    2026-08-26 11:21:15,138 - iso15118.shared.states (139): Entered state ChargeParameterDiscovery
+DEBUG    2026-08-26 11:21:15,138 - iso15118.shared.states (143): Waiting for up to 60.0 s
+INFO    2026-08-26 11:21:15,250 - iso15118.shared.exi_codec (302): Decoded message (ns=urn:iso:15118:2:2013:MsgDef): {"V2G_Message":{"Header":{"SessionID":"66A5C34A7C4083DE"},"Body":{"ChargeParameterDiscoveryReq":{"RequestedEnergyTransferMode":"AC_three_phase_core","AC_EVChargeParameter":{"DepartureTime":0,"EAmount":{"Multiplier":0,"Unit":"Wh","Value":60},"EVMaxVoltage":{"Multiplier":0,"Unit":"V","Value":400},"EVMaxCurrent":{"Multiplier":-3,"Unit":"A","Value":32000},"EVMinCurrent":{"Multiplier":0,"Unit":"A","Value":10}}}}}}
+INFO    2026-08-26 11:21:15,250 - iso15118.shared.comm_session (235): ChargeParameterDiscoveryReq received
+INFO    2026-08-26 11:21:15,251 - iso15118.secc.controller.simulator (1109): Send rated limits to CS.
+INFO    2026-08-26 11:21:15,251 - iso15118.shared.exi_codec (248): Message to encode (ns=urn:iso:15118:2:2013:MsgDef): {"SalesTariff": {"Id": "id1", "SalesTariffID": 10, "NumEPriceLevels": 1, "SalesTariffEntry": [{"EPriceLevel": 1, "RelativeTimeInterval": {"start": 0, "duration": 86400}}]}}
+INFO    2026-08-26 11:21:15,275 - iso15118.shared.exi_codec (248): Message to encode (ns=http://www.w3.org/2000/09/xmldsig#): {"SignedInfo": {"CanonicalizationMethod": {"Algorithm": "http://www.w3.org/TR/canonical-exi/"}, "SignatureMethod": {"Algorithm": "http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha256"}, "Reference": [{"Transforms": {"Transform": [{"Algorithm": "http://www.w3.org/TR/canonical-exi/"}]}, "DigestMethod": {"Algorithm": "http://www.w3.org/2001/04/xmlenc#sha256"}, "DigestValue": "ralwRkiB/uBn2TU6Q/IQq1ey1MVxvmK8cm/Rg2YmXT0=", "URI": "#id1"}]}}
+INFO    2026-08-26 11:21:15,296 - iso15118.shared.exi_codec (248): Message to encode (ns=urn:iso:15118:2:2013:MsgDef): {"V2G_Message": {"Header": {"SessionID": "66A5C34A7C4083DE", "Signature": {"SignedInfo": {"CanonicalizationMethod": {"Algorithm": "http://www.w3.org/TR/canonical-exi/"}, "SignatureMethod": {"Algorithm": "http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha256"}, "Reference": [{"Transforms": {"Transform": [{"Algorithm": "http://www.w3.org/TR/canonical-exi/"}]}, "DigestMethod": {"Algorithm": "http://www.w3.org/2001/04/xmlenc#sha256"}, "DigestValue": "ralwRkiB/uBn2TU6Q/IQq1ey1MVxvmK8cm/Rg2YmXT0=", "URI": "#id1"}]}, "SignatureValue": {"value": "2XE6DCu9ynOPLjbyuZRJkTaO0BhlC+u2S74jYUTw70Jn0Kf++vgxB5db0KIY/W6oEASZx5MYVygkmdfCiyrslQ=="}}}, "Body": {"ChargeParameterDiscoveryRes": {"ResponseCode": "OK", "EVSEProcessing": "Finished", "SAScheduleList": {"SAScheduleTuple": [{"SAScheduleTupleID": 1, "PMaxSchedule": {"PMaxScheduleEntry": [{"PMax": {"Value": 11000, "Multiplier": 0, "Unit": "W"}, "RelativeTimeInterval": {"start": 0, "duration": 86400}}]}, "SalesTariff": {"Id": "id1", "SalesTariffID": 10, "NumEPriceLevels": 1, "SalesTariffEntry": [{"EPriceLevel": 1, "RelativeTimeInterval": {"start": 0, "duration": 86400}}]}}]}, "AC_EVSEChargeParameter": {"AC_EVSEStatus": {"NotificationMaxDelay": 0, "EVSENotification": "None", "RCD": false}, "EVSENominalVoltage": {"Value": 400, "Multiplier": 0, "Unit": "V"}, "EVSEMaxCurrent": {"Value": 32, "Multiplier": 0, "Unit": "A"}}}}}}
+INFO    2026-08-26 11:21:15,316 - iso15118.shared.comm_session (431): Sent ChargeParameterDiscoveryRes
+INFO    2026-08-26 11:21:15,316 - iso15118.secc.controller.simulator (766): iso15118 state: ChargeParameterDiscovery
+INFO    2026-08-26 11:21:15,316 - iso15118.shared.states (139): Entered state PowerDelivery
+DEBUG    2026-08-26 11:21:15,316 - iso15118.shared.states (143): Waiting for up to 60.0 s
+INFO    2026-08-26 11:21:15,390 - iso15118.shared.exi_codec (302): Decoded message (ns=urn:iso:15118:2:2013:MsgDef): {"V2G_Message":{"Header":{"SessionID":"66A5C34A7C4083DE"},"Body":{"PowerDeliveryReq":{"ChargeProgress":"Start","SAScheduleTupleID":1,"ChargingProfile":{"ProfileEntry":[{"ChargingProfileEntryStart":0,"ChargingProfileEntryMaxPower":{"Multiplier":0,"Unit":"W","Value":11000}},{"ChargingProfileEntryStart":86400,"ChargingProfileEntryMaxPower":{"Multiplier":0,"Unit":"W","Value":0}}]}}}}}
+INFO    2026-08-26 11:21:15,390 - iso15118.shared.comm_session (235): PowerDeliveryReq received
+DEBUG    2026-08-26 11:21:15,390 - iso15118.secc.states.iso15118_2_states (1889): EV last Profile start 86400s is within time range [0; 86400[ and power range: EV Max 0 W <= EVSE Max 11000 W 
+
+DEBUG    2026-08-26 11:21:15,390 - iso15118.secc.states.iso15118_2_states (1675): ChargeProgress set to Start
+DEBUG    2026-08-26 11:21:15,391 - iso15118.secc.states.iso15118_2_states (1792): State is C2
+INFO    2026-08-26 11:21:15,391 - iso15118.shared.exi_codec (248): Message to encode (ns=urn:iso:15118:2:2013:MsgDef): {"V2G_Message": {"Header": {"SessionID": "66A5C34A7C4083DE"}, "Body": {"PowerDeliveryRes": {"ResponseCode": "OK", "AC_EVSEStatus": {"NotificationMaxDelay": 0, "EVSENotification": "None", "RCD": false}}}}}
+INFO    2026-08-26 11:21:15,432 - iso15118.shared.comm_session (431): Sent PowerDeliveryRes
+INFO    2026-08-26 11:21:15,432 - iso15118.secc.controller.simulator (766): iso15118 state: PowerDelivery
+INFO    2026-08-26 11:21:15,433 - iso15118.shared.states (139): Entered state ChargingStatus
+DEBUG    2026-08-26 11:21:15,433 - iso15118.shared.states (143): Waiting for up to 60.0 s
+INFO    2026-08-26 11:21:15,509 - iso15118.shared.exi_codec (302): Decoded message (ns=urn:iso:15118:2:2013:MsgDef): {"V2G_Message":{"Header":{"SessionID":"66A5C34A7C4083DE"},"Body":{"ChargingStatusReq":{}}}}
+INFO    2026-08-26 11:21:15,509 - iso15118.shared.comm_session (235): ChargingStatusReq received
+INFO    2026-08-26 11:21:15,509 - iso15118.shared.exi_codec (248): Message to encode (ns=urn:iso:15118:2:2013:MsgDef): {"V2G_Message": {"Header": {"SessionID": "66A5C34A7C4083DE"}, "Body": {"ChargingStatusRes": {"ResponseCode": "OK", "EVSEID": "UK123E1234", "SAScheduleTupleID": 1, "EVSEMaxCurrent": {"Value": 300, "Multiplier": 0, "Unit": "A"}, "ReceiptRequired": false, "AC_EVSEStatus": {"NotificationMaxDelay": 0, "EVSENotification": "None", "RCD": false}}}}}
+INFO    2026-08-26 11:21:15,525 - iso15118.shared.comm_session (431): Sent ChargingStatusRes
+INFO    2026-08-26 11:21:15,526 - iso15118.secc.controller.simulator (766): iso15118 state: ChargingStatus
+INFO    2026-08-26 11:21:15,588 - iso15118.shared.exi_codec (302): Decoded message (ns=urn:iso:15118:2:2013:MsgDef): {"V2G_Message":{"Header":{"SessionID":"66A5C34A7C4083DE"},"Body":{"ChargingStatusReq":{}}}}
+INFO    2026-08-26 11:21:15,588 - iso15118.shared.comm_session (235): ChargingStatusReq received
+INFO    2026-08-26 11:21:15,589 - iso15118.shared.exi_codec (248): Message to encode (ns=urn:iso:15118:2:2013:MsgDef): {"V2G_Message": {"Header": {"SessionID": "66A5C34A7C4083DE"}, "Body": {"ChargingStatusRes": {"ResponseCode": "OK", "EVSEID": "UK123E1234", "SAScheduleTupleID": 1, "EVSEMaxCurrent": {"Value": 300, "Multiplier": 0, "Unit": "A"}, "ReceiptRequired": false, "AC_EVSEStatus": {"NotificationMaxDelay": 0, "EVSENotification": "None", "RCD": false}}}}}
+INFO    2026-08-26 11:21:15,606 - iso15118.shared.comm_session (431): Sent ChargingStatusRes
+INFO    2026-08-26 11:21:15,606 - iso15118.secc.controller.simulator (766): iso15118 state: ChargingStatus
+INFO    2026-08-26 11:21:15,687 - iso15118.shared.exi_codec (302): Decoded message (ns=urn:iso:15118:2:2013:MsgDef): {"V2G_Message":{"Header":{"SessionID":"66A5C34A7C4083DE"},"Body":{"ChargingStatusReq":{}}}}
+INFO    2026-08-26 11:21:15,688 - iso15118.shared.comm_session (235): ChargingStatusReq received
+INFO    2026-08-26 11:21:15,688 - iso15118.shared.exi_codec (248): Message to encode (ns=urn:iso:15118:2:2013:MsgDef): {"V2G_Message": {"Header": {"SessionID": "66A5C34A7C4083DE"}, "Body": {"ChargingStatusRes": {"ResponseCode": "OK", "EVSEID": "UK123E1234", "SAScheduleTupleID": 1, "EVSEMaxCurrent": {"Value": 300, "Multiplier": 0, "Unit": "A"}, "ReceiptRequired": false, "AC_EVSEStatus": {"NotificationMaxDelay": 0, "EVSENotification": "None", "RCD": false}}}}}
+INFO    2026-08-26 11:21:15,715 - iso15118.shared.comm_session (431): Sent ChargingStatusRes
+INFO    2026-08-26 11:21:15,715 - iso15118.secc.controller.simulator (766): iso15118 state: ChargingStatus
+INFO    2026-08-26 11:21:15,789 - iso15118.shared.exi_codec (302): Decoded message (ns=urn:iso:15118:2:2013:MsgDef): {"V2G_Message":{"Header":{"SessionID":"66A5C34A7C4083DE"},"Body":{"ChargingStatusReq":{}}}}
+INFO    2026-08-26 11:21:15,790 - iso15118.shared.comm_session (235): ChargingStatusReq received
+INFO    2026-08-26 11:21:15,790 - iso15118.shared.exi_codec (248): Message to encode (ns=urn:iso:15118:2:2013:MsgDef): {"V2G_Message": {"Header": {"SessionID": "66A5C34A7C4083DE"}, "Body": {"ChargingStatusRes": {"ResponseCode": "OK", "EVSEID": "UK123E1234", "SAScheduleTupleID": 1, "EVSEMaxCurrent": {"Value": 300, "Multiplier": 0, "Unit": "A"}, "ReceiptRequired": false, "AC_EVSEStatus": {"NotificationMaxDelay": 0, "EVSENotification": "None", "RCD": false}}}}}
+INFO    2026-08-26 11:21:15,804 - iso15118.shared.comm_session (431): Sent ChargingStatusRes
+INFO    2026-08-26 11:21:15,804 - iso15118.secc.controller.simulator (766): iso15118 state: ChargingStatus
+INFO    2026-08-26 11:21:15,874 - iso15118.shared.exi_codec (302): Decoded message (ns=urn:iso:15118:2:2013:MsgDef): {"V2G_Message":{"Header":{"SessionID":"66A5C34A7C4083DE"},"Body":{"ChargingStatusReq":{}}}}
+INFO    2026-08-26 11:21:15,875 - iso15118.shared.comm_session (235): ChargingStatusReq received
+INFO    2026-08-26 11:21:15,875 - iso15118.shared.exi_codec (248): Message to encode (ns=urn:iso:15118:2:2013:MsgDef): {"V2G_Message": {"Header": {"SessionID": "66A5C34A7C4083DE"}, "Body": {"ChargingStatusRes": {"ResponseCode": "OK", "EVSEID": "UK123E1234", "SAScheduleTupleID": 1, "EVSEMaxCurrent": {"Value": 300, "Multiplier": 0, "Unit": "A"}, "ReceiptRequired": false, "AC_EVSEStatus": {"NotificationMaxDelay": 0, "EVSENotification": "None", "RCD": false}}}}}
+INFO    2026-08-26 11:21:15,893 - iso15118.shared.comm_session (431): Sent ChargingStatusRes
+INFO    2026-08-26 11:21:15,893 - iso15118.secc.controller.simulator (766): iso15118 state: ChargingStatus
+INFO    2026-08-26 11:21:15,965 - iso15118.shared.exi_codec (302): Decoded message (ns=urn:iso:15118:2:2013:MsgDef): {"V2G_Message":{"Header":{"SessionID":"66A5C34A7C4083DE"},"Body":{"ChargingStatusReq":{}}}}
+INFO    2026-08-26 11:21:15,966 - iso15118.shared.comm_session (235): ChargingStatusReq received
+INFO    2026-08-26 11:21:15,966 - iso15118.shared.exi_codec (248): Message to encode (ns=urn:iso:15118:2:2013:MsgDef): {"V2G_Message": {"Header": {"SessionID": "66A5C34A7C4083DE"}, "Body": {"ChargingStatusRes": {"ResponseCode": "OK", "EVSEID": "UK123E1234", "SAScheduleTupleID": 1, "EVSEMaxCurrent": {"Value": 300, "Multiplier": 0, "Unit": "A"}, "ReceiptRequired": false, "AC_EVSEStatus": {"NotificationMaxDelay": 0, "EVSENotification": "None", "RCD": false}}}}}
+INFO    2026-08-26 11:21:15,988 - iso15118.shared.comm_session (431): Sent ChargingStatusRes
+INFO    2026-08-26 11:21:15,989 - iso15118.secc.controller.simulator (766): iso15118 state: ChargingStatus
+INFO    2026-08-26 11:21:16,044 - iso15118.shared.exi_codec (302): Decoded message (ns=urn:iso:15118:2:2013:MsgDef): {"V2G_Message":{"Header":{"SessionID":"66A5C34A7C4083DE"},"Body":{"ChargingStatusReq":{}}}}
+INFO    2026-08-26 11:21:16,044 - iso15118.shared.comm_session (235): ChargingStatusReq received
+INFO    2026-08-26 11:21:16,044 - iso15118.shared.exi_codec (248): Message to encode (ns=urn:iso:15118:2:2013:MsgDef): {"V2G_Message": {"Header": {"SessionID": "66A5C34A7C4083DE"}, "Body": {"ChargingStatusRes": {"ResponseCode": "OK", "EVSEID": "UK123E1234", "SAScheduleTupleID": 1, "EVSEMaxCurrent": {"Value": 300, "Multiplier": 0, "Unit": "A"}, "ReceiptRequired": false, "AC_EVSEStatus": {"NotificationMaxDelay": 0, "EVSENotification": "None", "RCD": false}}}}}
+INFO    2026-08-26 11:21:16,065 - iso15118.shared.comm_session (431): Sent ChargingStatusRes
+INFO    2026-08-26 11:21:16,065 - iso15118.secc.controller.simulator (766): iso15118 state: ChargingStatus
+INFO    2026-08-26 11:21:16,122 - iso15118.shared.exi_codec (302): Decoded message (ns=urn:iso:15118:2:2013:MsgDef): {"V2G_Message":{"Header":{"SessionID":"66A5C34A7C4083DE"},"Body":{"ChargingStatusReq":{}}}}
+INFO    2026-08-26 11:21:16,122 - iso15118.shared.comm_session (235): ChargingStatusReq received
+INFO    2026-08-26 11:21:16,122 - iso15118.shared.exi_codec (248): Message to encode (ns=urn:iso:15118:2:2013:MsgDef): {"V2G_Message": {"Header": {"SessionID": "66A5C34A7C4083DE"}, "Body": {"ChargingStatusRes": {"ResponseCode": "OK", "EVSEID": "UK123E1234", "SAScheduleTupleID": 1, "EVSEMaxCurrent": {"Value": 300, "Multiplier": 0, "Unit": "A"}, "ReceiptRequired": false, "AC_EVSEStatus": {"NotificationMaxDelay": 0, "EVSENotification": "None", "RCD": false}}}}}
+INFO    2026-08-26 11:21:16,136 - iso15118.shared.comm_session (431): Sent ChargingStatusRes
+INFO    2026-08-26 11:21:16,136 - iso15118.secc.controller.simulator (766): iso15118 state: ChargingStatus
+INFO    2026-08-26 11:21:16,182 - iso15118.shared.exi_codec (302): Decoded message (ns=urn:iso:15118:2:2013:MsgDef): {"V2G_Message":{"Header":{"SessionID":"66A5C34A7C4083DE"},"Body":{"ChargingStatusReq":{}}}}
+INFO    2026-08-26 11:21:16,182 - iso15118.shared.comm_session (235): ChargingStatusReq received
+INFO    2026-08-26 11:21:16,182 - iso15118.shared.exi_codec (248): Message to encode (ns=urn:iso:15118:2:2013:MsgDef): {"V2G_Message": {"Header": {"SessionID": "66A5C34A7C4083DE"}, "Body": {"ChargingStatusRes": {"ResponseCode": "OK", "EVSEID": "UK123E1234", "SAScheduleTupleID": 1, "EVSEMaxCurrent": {"Value": 300, "Multiplier": 0, "Unit": "A"}, "ReceiptRequired": false, "AC_EVSEStatus": {"NotificationMaxDelay": 0, "EVSENotification": "None", "RCD": false}}}}}
+INFO    2026-08-26 11:21:16,194 - iso15118.shared.comm_session (431): Sent ChargingStatusRes
+INFO    2026-08-26 11:21:16,194 - iso15118.secc.controller.simulator (766): iso15118 state: ChargingStatus
+INFO    2026-08-26 11:21:16,232 - iso15118.shared.exi_codec (302): Decoded message (ns=urn:iso:15118:2:2013:MsgDef): {"V2G_Message":{"Header":{"SessionID":"66A5C34A7C4083DE"},"Body":{"ChargingStatusReq":{}}}}
+INFO    2026-08-26 11:21:16,232 - iso15118.shared.comm_session (235): ChargingStatusReq received
+INFO    2026-08-26 11:21:16,233 - iso15118.shared.exi_codec (248): Message to encode (ns=urn:iso:15118:2:2013:MsgDef): {"V2G_Message": {"Header": {"SessionID": "66A5C34A7C4083DE"}, "Body": {"ChargingStatusRes": {"ResponseCode": "OK", "EVSEID": "UK123E1234", "SAScheduleTupleID": 1, "EVSEMaxCurrent": {"Value": 300, "Multiplier": 0, "Unit": "A"}, "ReceiptRequired": false, "AC_EVSEStatus": {"NotificationMaxDelay": 0, "EVSENotification": "None", "RCD": false}}}}}
+INFO    2026-08-26 11:21:16,246 - iso15118.shared.comm_session (431): Sent ChargingStatusRes
+INFO    2026-08-26 11:21:16,246 - iso15118.secc.controller.simulator (766): iso15118 state: ChargingStatus
+INFO    2026-08-26 11:21:16,309 - iso15118.shared.exi_codec (302): Decoded message (ns=urn:iso:15118:2:2013:MsgDef): {"V2G_Message":{"Header":{"SessionID":"66A5C34A7C4083DE"},"Body":{"PowerDeliveryReq":{"ChargeProgress":"Stop","SAScheduleTupleID":1}}}}
+INFO    2026-08-26 11:21:16,309 - iso15118.shared.comm_session (235): PowerDeliveryReq received
+INFO    2026-08-26 11:21:16,309 - iso15118.shared.states (139): Entered state PowerDelivery
+DEBUG    2026-08-26 11:21:16,309 - iso15118.shared.states (143): Waiting for up to 60.0 s
+DEBUG    2026-08-26 11:21:16,309 - iso15118.secc.states.iso15118_2_states (1675): ChargeProgress set to Stop
+INFO    2026-08-26 11:21:16,310 - iso15118.shared.exi_codec (248): Message to encode (ns=urn:iso:15118:2:2013:MsgDef): {"V2G_Message": {"Header": {"SessionID": "66A5C34A7C4083DE"}, "Body": {"PowerDeliveryRes": {"ResponseCode": "OK", "AC_EVSEStatus": {"NotificationMaxDelay": 0, "EVSENotification": "None", "RCD": false}}}}}
+INFO    2026-08-26 11:21:16,330 - iso15118.shared.comm_session (431): Sent PowerDeliveryRes
+INFO    2026-08-26 11:21:16,330 - iso15118.secc.controller.simulator (766): iso15118 state: PowerDelivery
+INFO    2026-08-26 11:21:16,330 - iso15118.shared.states (139): Entered state SessionStop
+DEBUG    2026-08-26 11:21:16,330 - iso15118.shared.states (143): Waiting for up to 60.0 s
+INFO    2026-08-26 11:21:16,376 - iso15118.shared.exi_codec (302): Decoded message (ns=urn:iso:15118:2:2013:MsgDef): {"V2G_Message":{"Header":{"SessionID":"66A5C34A7C4083DE"},"Body":{"SessionStopReq":{"ChargingSession":"Terminate"}}}}
+INFO    2026-08-26 11:21:16,376 - iso15118.shared.comm_session (235): SessionStopReq received
+INFO    2026-08-26 11:21:16,377 - iso15118.shared.exi_codec (248): Message to encode (ns=urn:iso:15118:2:2013:MsgDef): {"V2G_Message": {"Header": {"SessionID": "66A5C34A7C4083DE"}, "Body": {"SessionStopRes": {"ResponseCode": "OK"}}}}
+INFO    2026-08-26 11:21:16,391 - iso15118.shared.comm_session (431): Sent SessionStopRes
+INFO    2026-08-26 11:21:16,391 - iso15118.secc.controller.simulator (766): iso15118 state: SessionStop
+INFO    2026-08-26 11:21:16,391 - iso15118.shared.comm_session (395): The data link will terminate in 2 seconds and the TCP connection will close in 5 seconds. 
+INFO    2026-08-26 11:21:16,391 - iso15118.shared.comm_session (399): Reason: EV requested to terminate the communication session
+INFO    2026-08-26 11:21:18,394 - iso15118.secc.controller.simulator (1097): Session ended in SessionStop (EV requested to terminate the communication session).
+INFO    2026-08-26 11:21:18,394 - iso15118.shared.comm_session (410): terminated the data link
+INFO    2026-08-26 11:21:21,399 - iso15118.shared.comm_session (417): TCP connection closed to peer with address ('fe80::6413:5bff:fe69:2225', 47672, 0, 2)
+WARNING    2026-08-26 11:21:21,400 - iso15118.secc.transport.tcp_server (149): Closing TCP server
+INFO    2026-08-26 11:21:21,400 - iso15118.secc.transport.udp_server (209): UDP server has been resumed.
