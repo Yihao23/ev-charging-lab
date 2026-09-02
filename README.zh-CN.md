@@ -2,6 +2,10 @@
 
 *[English](README.md)*
 
+> ### [&#9654; 打开图解版](https://yihao23.github.io/ev-charging-lab/)
+> 一页看完从后台到电池的整条链路: 每一跳跑的是什么，以及支撑它的
+> 真实日志、抓包和截图。
+
 两周内从零学会电动汽车充电技术栈 —— OCPP、ISO 15118、SECC 和 Node-RED ——
 方法是造四个真正能跑的小东西。
 

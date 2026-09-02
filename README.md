@@ -2,6 +2,10 @@
 
 *[中文](README.zh-CN.md)*
 
+> ### [&#9654; Open the visual walkthrough](https://yihao23.github.io/ev-charging-lab/)
+> One page, backend to battery: what runs at every hop, with the real logs,
+> captures and screenshots behind each claim.
+
 Learning the EV charging stack from zero in two weeks — OCPP, ISO 15118, SECC
 and Node-RED — by building four small things that work.
 

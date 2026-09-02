@@ -32,3 +32,10 @@ report.md
 # 个人工作笔记，仅本地保留，不属于项目内容。
 AGENTS.md
 docs/INTERVIEW-QA.md
+
+# Local-only decks and scripts. docs/index.html is the published GitHub Pages
+# entry point and IS tracked; everything else under docs/ stays local.
+# 本地留底的展板与讲稿。docs/index.html 是 GitHub Pages 的入口，要提交；
+# docs/ 下的其它 html 一律不进仓库。
+docs/*.html
+!docs/index.html
